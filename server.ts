@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { Innertube, Log, ClientType } from 'youtubei.js';
 import path from 'path';
+import fs from 'fs';
 import { Readable } from 'node:stream';
 import { MemoryCache } from './cache';
 
@@ -12,10 +13,21 @@ const PORT = process.env.PORT || 3000;
 
 export const infoCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 60 * 60 * 1000 });
 export const manifestCache = new MemoryCache<string>({ maxItems: 500, defaultTtlMs: 30 * 60 * 1000 });
+export const suggestionsCache = new MemoryCache<string[]>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
+export const commentsCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
+export const feedCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 10 * 60 * 1000 });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+const distPath = path.join(__dirname, 'dist');
+const publicPath = path.join(__dirname, 'public');
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  app.use(express.static(publicPath));
+}
 
 function isValidStreamHost(rawUrl: string): boolean {
   try {
@@ -63,7 +75,7 @@ function getYtVision() {
   return ytVisionPromise;
 }
 
-// 1. Search endpoint (uses Web client)
+// 1. Search endpoint (uses Web client, supports filters)
 app.get('/api/search', async (req, res) => {
   try {
     const q = req.query.q as string;
@@ -71,21 +83,153 @@ app.get('/api/search', async (req, res) => {
       return res.status(400).json({ error: 'Missing query parameter q' });
     }
     const yt = await getYtWeb();
-    const results = await yt.search(q);
+    const filters: any = {};
+    if (req.query.upload_date) filters.upload_date = req.query.upload_date;
+    if (req.query.duration) filters.duration = req.query.duration;
+    if (req.query.type) filters.type = req.query.type;
+    if (req.query.sort_by) filters.sort_by = req.query.sort_by;
+
+    const results = await yt.search(q, Object.keys(filters).length ? filters : undefined);
     const videos = (results.videos || [])
       .filter((v: any) => v.id && v.title?.text)
       .map((v: any) => ({
         id: v.id,
         title: v.title?.text || '',
         author: v.author?.name || '',
+        authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+        duration: v.duration?.text || '',
+        views: v.short_view_count?.text || '',
+        published: v.published?.text || '',
+        thumbnail: v.thumbnails?.[0]?.url || '',
+        description: v.description_snippet?.text || ''
+      }));
+
+    const channels = (results.channels || []).map((ch: any) => ({
+      id: ch.id,
+      name: ch.author?.name || '',
+      avatar: ch.author?.thumbnails?.[0]?.url || '',
+      subscriberCount: ch.video_count || ch.subscriber_count?.text || '',
+      description: ch.description_snippet?.text || ''
+    }));
+
+    res.json({
+      results: videos,
+      channels,
+      hasContinuation: results.has_continuation
+    });
+  } catch (err: any) {
+    console.error('Search error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 1b. Autocomplete suggestions endpoint
+app.get('/api/suggestions', async (req, res) => {
+  try {
+    const q = ((req.query.q as string) || '').trim();
+    if (!q) {
+      return res.json({ suggestions: [] });
+    }
+    const cached = suggestionsCache.get(q.toLowerCase());
+    if (cached) {
+      return res.json({ suggestions: cached });
+    }
+    const yt = await getYtWeb();
+    const suggestions = await yt.getSearchSuggestions(q);
+    suggestionsCache.set(q.toLowerCase(), suggestions);
+    res.json({ suggestions });
+  } catch (err: any) {
+    console.error('Suggestions error:', err);
+    res.status(500).json({ error: err.message, suggestions: [] });
+  }
+});
+
+// 1c. Home/Trending feed endpoint
+app.get('/api/feed', async (req, res) => {
+  try {
+    const category = ((req.query.category as string) || '').trim();
+    const cacheKey = category || 'default_trending';
+    const cached = feedCache.get(cacheKey);
+    if (cached) {
+      return res.json({ results: cached });
+    }
+
+    const yt = await getYtWeb();
+    const searchQuery = category ? `${category} thịnh hành` : 'thịnh hành việt nam';
+    const results = await yt.search(searchQuery, { type: 'video' });
+    const videos = (results.videos || [])
+      .filter((v: any) => v.id && v.title?.text)
+      .map((v: any) => ({
+        id: v.id,
+        title: v.title?.text || '',
+        author: v.author?.name || '',
+        authorAvatar: v.author?.thumbnails?.[0]?.url || '',
         duration: v.duration?.text || '',
         views: v.short_view_count?.text || '',
         published: v.published?.text || '',
         thumbnail: v.thumbnails?.[0]?.url || ''
       }));
+
+    feedCache.set(cacheKey, videos);
     res.json({ results: videos });
   } catch (err: any) {
-    console.error('Search error:', err);
+    console.error('Feed error:', err);
+    res.status(500).json({ error: err.message, results: [] });
+  }
+});
+
+// 1d. Comments endpoint
+app.get('/api/comments', async (req, res) => {
+  try {
+    const videoId = cleanVideoId(req.query.v as string);
+    if (!videoId) {
+      return res.status(400).json({ error: 'Missing video parameter v' });
+    }
+
+    const cached = commentsCache.get(videoId);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const yt = await getYtWeb();
+    try {
+      const c = await yt.getComments(videoId);
+      const totalText = c.header?.comments_count?.text || '0';
+      const comments = (c.contents || [])
+        .filter((thread: any) => thread?.comment)
+        .map((thread: any) => {
+          const comment = thread.comment;
+          return {
+            id: comment.comment_id,
+            author: {
+              name: comment.author?.name || 'Ẩn danh',
+              avatar: comment.author?.thumbnails?.[0]?.url || ''
+            },
+            content: comment.content?.text || '',
+            published: typeof comment.published_time === 'string' ? comment.published_time : comment.published_time?.text || '',
+            likes: comment.like_count || '0',
+            replyCount: comment.reply_count || 0,
+            isPinned: comment.is_pinned || false
+          };
+        });
+
+      const responseData = {
+        total: totalText,
+        comments,
+        disabled: false
+      };
+      commentsCache.set(videoId, responseData);
+      res.json(responseData);
+    } catch (commentErr: any) {
+      res.json({
+        total: '0',
+        comments: [],
+        disabled: true,
+        message: 'Bình luận đã bị tắt cho video này.'
+      });
+    }
+  } catch (err: any) {
+    console.error('Comments endpoint error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -339,6 +483,15 @@ app.get('/api/stream/segment', async (req, res) => {
       res.status(500).send(err.message);
     }
   }
+});
+
+// SPA Fallback for client-side routing
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  const targetHtml = fs.existsSync(path.join(distPath, 'index.html'))
+    ? path.join(distPath, 'index.html')
+    : path.join(publicPath, 'index.html');
+  res.sendFile(targetHtml);
 });
 
 if (import.meta.main) {
