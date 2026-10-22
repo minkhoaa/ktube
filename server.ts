@@ -2,11 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { Innertube, Log, ClientType } from 'youtubei.js';
 import path from 'path';
+import { MemoryCache } from './cache';
 
 Log.setLevel(Log.Level.NONE);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+export const infoCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 60 * 60 * 1000 });
+export const manifestCache = new MemoryCache<string>({ maxItems: 500, defaultTtlMs: 30 * 60 * 1000 });
 
 app.use(cors());
 app.use(express.json());
@@ -79,6 +83,11 @@ app.get('/api/info', async (req, res) => {
       return res.status(400).json({ error: 'Missing video parameter v' });
     }
 
+    const cached = infoCache.get(cleanId);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const yt = await getYtVision();
     const info = await yt.getBasicInfo(cleanId, ClientType.VISIONOS);
 
@@ -102,7 +111,7 @@ app.get('/api/info', async (req, res) => {
       t.displayName.toLowerCase().includes('tiếng việt')
     );
 
-    res.json({
+    const responseData = {
       id: cleanId,
       title: info.basic_info.title,
       author: info.basic_info.author,
@@ -114,7 +123,10 @@ app.get('/api/info', async (req, res) => {
       hasVietnameseAudio: !!viAudio,
       vietnameseAudioTrack: viAudio || null,
       hasHls: !!info.streaming_data?.hls_manifest_url
-    });
+    };
+
+    infoCache.set(cleanId, responseData);
+    res.json(responseData);
   } catch (err: any) {
     console.error('Info error:', err);
     res.status(500).json({ error: err.message });
@@ -127,6 +139,13 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
     const videoId = cleanVideoId(req.query.v as string);
     if (!videoId) {
       return res.status(400).send('Missing video parameter v');
+    }
+
+    const cached = manifestCache.get(videoId);
+    if (cached) {
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.send(cached);
     }
 
     const yt = await getYtVision();
@@ -183,6 +202,8 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
 
       return line;
     }).join('\n');
+
+    manifestCache.set(videoId, rewritten);
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Access-Control-Allow-Origin', '*');
