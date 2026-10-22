@@ -6,6 +6,7 @@ import { SearchResults } from './components/Search/SearchResults';
 import { WatchPage } from './components/Watch/WatchPage';
 import { HistoryPage } from './components/Library/HistoryPage';
 import { SubscriptionsPage } from './components/Library/SubscriptionsPage';
+import { ChannelPage } from './components/Channel/ChannelPage';
 import { PersistentPlayer } from './components/Player/PersistentPlayer';
 import { getAppState, subscribeAppState, setView, playVideo, setAppState } from './services/store';
 import { recordHistoryProgress } from './services/libraryStore';
@@ -37,6 +38,7 @@ export function App() {
       const params = new URLSearchParams(window.location.search);
       const v = params.get('v');
       const q = params.get('q');
+      const c = params.get('c') || params.get('channel');
       const viewParam = params.get('view');
 
       if (v) {
@@ -45,6 +47,9 @@ export function App() {
         } else {
           setView('watch');
         }
+      } else if (c) {
+        setAppState({ selectedChannelId: c });
+        setView('channel');
       } else if (q) {
         setAppState({ searchQuery: q });
         setView('search');
@@ -112,6 +117,13 @@ export function App() {
   const navigateSubscriptions = () => {
     window.history.pushState({}, '', '/?view=subscriptions');
     setView('subscriptions');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  const navigateChannel = (channelId: string) => {
+    window.history.pushState({}, '', `/?c=${encodeURIComponent(channelId)}`);
+    setAppState({ selectedChannelId: channelId });
+    setView('channel');
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
@@ -193,7 +205,19 @@ export function App() {
             className="keep-alive-page subscriptions-page-slot"
             style={{ display: appState.view === 'subscriptions' ? 'block' : 'none' }}
           >
-            <SubscriptionsPage onSelectVideo={navigateWatch} />
+            <SubscriptionsPage onSelectVideo={navigateWatch} onSelectChannel={navigateChannel} />
+          </div>
+
+          <div
+            className="keep-alive-page channel-page-slot"
+            style={{ display: appState.view === 'channel' ? 'block' : 'none' }}
+          >
+            {appState.selectedChannelId && (
+              <ChannelPage
+                channelId={appState.selectedChannelId}
+                onSelectVideo={navigateWatch}
+              />
+            )}
           </div>
 
           <div
@@ -204,6 +228,7 @@ export function App() {
               <WatchPage
                 videoId={appState.activeVideo.id}
                 onSelectVideo={navigateWatch}
+                onSelectChannel={navigateChannel}
               />
             )}
           </div>

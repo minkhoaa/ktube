@@ -9,10 +9,11 @@ import './WatchPage.css';
 
 interface WatchPageProps {
   videoId: string;
-  onSelectVideo: (videoId: string) => void;
+  onSelectVideo: (videoId: string, title?: string, author?: string, thumbnail?: string) => void;
+  onSelectChannel?: (channelId: string) => void;
 }
 
-export function WatchPage({ videoId, onSelectVideo }: WatchPageProps) {
+export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPageProps) {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [isTheater, setIsTheater] = useState(false);
   const [nextVideoId, setNextVideoId] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export function WatchPage({ videoId, onSelectVideo }: WatchPageProps) {
         <div className="watch-primary-col">
           {!isTheater && dockSlot}
 
-          {videoInfo && <VideoMetadata info={videoInfo} />}
+          {videoInfo && <VideoMetadata info={videoInfo} onSelectChannel={onSelectChannel} />}
           {videoInfo && <DescriptionBox description={videoInfo.description} />}
           <CommentsSection videoId={videoId} />
         </div>

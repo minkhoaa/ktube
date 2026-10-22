@@ -1,26 +1,48 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import type { VideoInfo } from '../../types';
+import { isVideoLiked, toggleLikedVideo, isSubscribed, toggleSubscription, subscribeLibrary } from '../../services/libraryStore';
 import './VideoMetadata.css';
 
 interface VideoMetadataProps {
   info: VideoInfo;
+  onSelectChannel?: (channelId: string) => void;
 }
 
-export function VideoMetadata({ info }: VideoMetadataProps) {
+export function VideoMetadata({ info, onSelectChannel }: VideoMetadataProps) {
   const [likes, setLikes] = useState<number>(128000);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isDisliked, setIsDisliked] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLiked, setIsLiked] = useState<boolean>(isVideoLiked(info.id));
+  const [isDisliked, setIsDisliked] = useState<boolean>(false);
+  const [isSub, setIsSub] = useState<boolean>(isSubscribed((info as any).channelId || info.author));
   const [showToast, setShowToast] = useState(false);
 
+  useEffect(() => {
+    setIsLiked(isVideoLiked(info.id));
+    setIsSub(isSubscribed((info as any).channelId || info.author));
+    return subscribeLibrary(() => {
+      setIsLiked(isVideoLiked(info.id));
+      setIsSub(isSubscribed((info as any).channelId || info.author));
+    });
+  }, [info.id]);
+
   const handleLike = () => {
-    if (isLiked) {
-      setIsLiked(false);
-      setLikes(prev => prev - 1);
-    } else {
-      setIsLiked(true);
-      if (isDisliked) setIsDisliked(false);
+    const entry = {
+      id: info.id,
+      title: info.title,
+      author: info.author,
+      thumbnail: info.thumbnails?.[0]?.url || '',
+      duration: '',
+      progressPercent: 0,
+      currentTime: 0,
+      durationSeconds: 0,
+      watchedAt: Date.now()
+    };
+    const nowLiked = toggleLikedVideo(entry);
+    setIsLiked(nowLiked);
+    if (nowLiked) {
       setLikes(prev => prev + 1);
+      setIsDisliked(false);
+    } else {
+      setLikes(prev => prev - 1);
     }
   };
 
@@ -30,10 +52,19 @@ export function VideoMetadata({ info }: VideoMetadataProps) {
     } else {
       setIsDisliked(true);
       if (isLiked) {
-        setIsLiked(false);
-        setLikes(prev => prev - 1);
+        handleLike();
       }
     }
+  };
+
+  const handleToggleSub = () => {
+    const chId = (info as any).channelId || info.author;
+    toggleSubscription({
+      channelId: chId,
+      channelName: info.author,
+      avatar: info.thumbnails?.[0]?.url || '',
+      subscribedAt: Date.now()
+    });
   };
 
   const handleShare = () => {
@@ -59,28 +90,33 @@ export function VideoMetadata({ info }: VideoMetadataProps) {
       <div className="video-actions-bar">
         {/* Channel info */}
         <div className="channel-profile-left">
-          {avatarUrl ? (
-            <img className="channel-detail-avatar" src={avatarUrl} alt={info.author} />
-          ) : (
-            <div className="channel-detail-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#c00', color: '#fff', fontWeight: 600 }}>
-              {(info.author || 'Y').charAt(0).toUpperCase()}
-            </div>
-          )}
+          <div
+            onClick={() => onSelectChannel?.((info as any).channelId || info.author)}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+          >
+            {avatarUrl ? (
+              <img className="channel-detail-avatar" src={avatarUrl} alt={info.author} />
+            ) : (
+              <div className="channel-detail-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#c00', color: '#fff', fontWeight: 600 }}>
+                {(info.author || 'Y').charAt(0).toUpperCase()}
+              </div>
+            )}
 
-          <div className="channel-name-and-subs">
-            <span className="channel-detail-name">{info.author}</span>
-            <span className="channel-detail-subs">Trực tiếp từ YouTube</span>
+            <div className="channel-name-and-subs">
+              <span className="channel-detail-name">{info.author}</span>
+              <span className="channel-detail-subs">Trực tiếp từ YouTube</span>
+            </div>
           </div>
 
           <button
             className="subscribe-pill-btn"
-            onClick={() => setIsSubscribed(!isSubscribed)}
+            onClick={handleToggleSub}
             style={{
-              background: isSubscribed ? 'var(--yt-bg-secondary)' : 'var(--yt-text-primary)',
-              color: isSubscribed ? 'var(--yt-text-primary)' : 'var(--yt-text-inverse)'
+              background: isSub ? 'var(--yt-bg-secondary)' : 'var(--yt-text-primary)',
+              color: isSub ? 'var(--yt-text-primary)' : 'var(--yt-text-inverse)'
             }}
           >
-            {isSubscribed ? 'Đã đăng ký' : 'Đăng ký'}
+            {isSub ? 'Đã đăng ký ✓' : 'Đăng ký'}
           </button>
         </div>
 
