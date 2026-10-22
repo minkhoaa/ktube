@@ -1,0 +1,87 @@
+.seekbar-container {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.seekbar-track-bg {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: height 0.1s ease;
+}
+
+.seekbar-container:hover .seekbar-track-bg,
+.seekbar-container.scrubbing .seekbar-track-bg {
+  height: 5px;
+}
+
+.seekbar-buffer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.seekbar-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: var(--yt-red);
+  pointer-events: none;
+}
+
+.seekbar-thumb {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--yt-red);
+  transform: translateY(-50%) scale(0);
+  transition: transform 0.1s ease;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.seekbar-container:hover .seekbar-thumb,
+.seekbar-container.scrubbing .seekbar-thumb {
+  transform: translateY(-50%) scale(1);
+}
+
+.seekbar-hover-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.seekbar-tooltip {
+  position: absolute;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 28, 0.9);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}

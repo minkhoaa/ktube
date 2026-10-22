@@ -248,7 +248,7 @@ app.get('/api/info', async (req, res) => {
     }
 
     const yt = await getYtVision();
-    const info = await yt.getBasicInfo(cleanId, ClientType.VISIONOS);
+    const info = await yt.getBasicInfo(cleanId, ClientType.VISIONOS as any);
 
     const adaptive = info.streaming_data?.adaptive_formats || [];
     const videoQualities = Array.from(new Set(
@@ -308,7 +308,7 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
     }
 
     const yt = await getYtVision();
-    const info = await yt.getBasicInfo(videoId, ClientType.VISIONOS);
+    const info = await yt.getBasicInfo(videoId, ClientType.VISIONOS as any);
     const hlsUrl = info.streaming_data?.hls_manifest_url;
 
     if (!hlsUrl) {
