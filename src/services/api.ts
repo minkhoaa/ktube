@@ -1,4 +1,4 @@
-import { VideoItem, ChannelItem, VideoInfo, CommentItem, SearchFilters } from '../types';
+import type { VideoItem, ChannelItem, VideoInfo, CommentItem, SearchFilters } from '../types';
 
 export async function fetchFeed(category?: string): Promise<VideoItem[]> {
   const url = category ? `/api/feed?category=${encodeURIComponent(category)}` : '/api/feed';

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
+import { Navbar } from './components/Navbar/Navbar';
+import { Sidebar } from './components/Sidebar/Sidebar';
 import './styles/base.css';
 
 export type AppView = 'feed' | 'search' | 'watch';
@@ -69,30 +71,35 @@ export function App() {
     setIsSidebarOpen(prev => !prev);
   };
 
+  const isWatch = view === 'watch';
+
   return (
     <div className="app-container">
-      <header style={{
-        height: 'var(--yt-navbar-height)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        borderBottom: '1px solid var(--yt-border-color)',
-        backgroundColor: 'var(--yt-bg-primary)',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100
-      }}>
-        <button onClick={navigateHome} style={{ fontWeight: 'bold', fontSize: '18px', color: 'var(--yt-red)' }}>
-          ▶ Pure Tuber
-        </button>
-      </header>
-      <main className="main-layout">
-        <div className="content-area">
-          <p>YouTube Clone Initialized (View: {view})</p>
-        </div>
-      </main>
+      <Navbar
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onToggleSidebar={toggleSidebar}
+        onNavigateHome={navigateHome}
+        onSearch={navigateSearch}
+        initialQuery={searchQuery}
+      />
+
+      <div className="main-layout">
+        {!isWatch && (
+          <Sidebar
+            isOpen={isSidebarOpen}
+            activeItem={view === 'feed' ? 'home' : ''}
+            onNavigateHome={navigateHome}
+            onSelectTopic={(topic) => navigateSearch(topic)}
+          />
+        )}
+
+        <main className={`content-area ${isWatch ? 'watch-mode' : (isSidebarOpen ? 'with-full-sidebar' : 'with-mini-sidebar')}`}>
+          <div style={{ padding: '20px' }}>
+            <h2>Giao diện YouTube (View: {view})</h2>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
