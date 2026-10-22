@@ -60,4 +60,28 @@ describe('Backend API Extensions', () => {
     expect(Array.isArray(data.comments)).toBe(true);
     expect(typeof data.disabled).toBe('boolean');
   }, 10000);
+
+  it('GET /api/captions returns available languages and cues for video with captions', async () => {
+    const res = await fetch(`http://localhost:${testPort}/api/captions?v=dQw4w9WgXcQ`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.availableLanguages)).toBe(true);
+  }, 15000);
+
+  it('GET /api/channel returns channel profile and videos', async () => {
+    const res = await fetch(`http://localhost:${testPort}/api/channel?id=UCuAXFkgsw1L7xaCfnd5JJOw`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty('title');
+    expect(data).toHaveProperty('avatar');
+    expect(Array.isArray(data.videos)).toBe(true);
+  }, 15000);
+
+  it('GET /api/shorts returns trending shorts list', async () => {
+    const res = await fetch(`http://localhost:${testPort}/api/shorts`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.results)).toBe(true);
+    expect(data.results.length).toBeGreaterThan(0);
+  }, 15000);
 });

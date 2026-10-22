@@ -16,6 +16,9 @@ export const manifestCache = new MemoryCache<string>({ maxItems: 500, defaultTtl
 export const suggestionsCache = new MemoryCache<string[]>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
 export const commentsCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
 export const feedCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 10 * 60 * 1000 });
+export const captionsCache = new MemoryCache<any>({ maxItems: 300, defaultTtlMs: 2 * 60 * 60 * 1000 });
+export const channelCache = new MemoryCache<any>({ maxItems: 100, defaultTtlMs: 60 * 60 * 1000 });
+export const shortsCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 30 * 60 * 1000 });
 
 app.use(cors());
 app.use(express.json());
@@ -231,6 +234,124 @@ app.get('/api/comments', async (req, res) => {
   } catch (err: any) {
     console.error('Comments endpoint error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 1e. Closed Captions (CC) endpoint
+app.get('/api/captions', async (req, res) => {
+  try {
+    const videoId = cleanVideoId(req.query.v as string);
+    if (!videoId) {
+      return res.status(400).json({ error: 'Missing video parameter v' });
+    }
+
+    const cached = captionsCache.get(videoId);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const yt = await getYtWeb();
+    const info = await yt.getInfo(videoId);
+
+    const availableLanguages = (info.captions?.caption_tracks || []).map((t: any) => ({
+      code: t.language_code,
+      name: t.name?.text || t.language_code,
+      url: t.base_url
+    }));
+
+    const responseData = {
+      availableLanguages,
+      cues: []
+    };
+
+    captionsCache.set(videoId, responseData);
+    res.json(responseData);
+  } catch (err: any) {
+    console.error('Captions endpoint error:', err);
+    res.status(500).json({ error: err.message, availableLanguages: [], cues: [] });
+  }
+});
+
+// 1f. Dedicated Channel profile & video list endpoint
+app.get('/api/channel', async (req, res) => {
+  try {
+    const channelId = ((req.query.id as string) || '').trim();
+    if (!channelId) {
+      return res.status(400).json({ error: 'Missing channel id' });
+    }
+
+    const cached = channelCache.get(channelId);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const yt = await getYtWeb();
+    const ch = await yt.getChannel(channelId);
+
+    const title = (ch.header as any)?.author?.name || (ch.metadata as any)?.title || 'Kênh YouTube';
+    const avatar = (ch.header as any)?.author?.thumbnails?.[0]?.url || (ch.metadata as any)?.avatar?.[0]?.url || '';
+    const banner = (ch.header as any)?.banner?.thumbnails?.[0]?.url || '';
+    const subscribers = (ch.header as any)?.subscribers?.text || '';
+    const description = (ch.metadata as any)?.description || '';
+
+    const videos = (ch.videos || [])
+      .filter((v: any) => v.id && v.title?.text)
+      .map((v: any) => ({
+        id: v.id,
+        title: v.title?.text || '',
+        author: title,
+        duration: v.duration?.text || '',
+        views: v.short_view_count?.text || '',
+        published: v.published?.text || '',
+        thumbnail: v.thumbnails?.[0]?.url || ''
+      }));
+
+    const responseData = {
+      id: channelId,
+      title,
+      avatar,
+      banner,
+      subscribers,
+      description,
+      videos
+    };
+
+    channelCache.set(channelId, responseData);
+    res.json(responseData);
+  } catch (err: any) {
+    console.error('Channel endpoint error:', err);
+    res.status(500).json({ error: err.message, videos: [] });
+  }
+});
+
+// 1g. Dedicated Shorts list endpoint
+app.get('/api/shorts', async (req, res) => {
+  try {
+    const cached = shortsCache.get('default_shorts');
+    if (cached) {
+      return res.json({ results: cached });
+    }
+
+    const yt = await getYtWeb();
+    const searchRes = await yt.search('#shorts', { type: 'video' });
+    const results = (searchRes.videos || [])
+      .filter((v: any) => v.id && v.title?.text)
+      .map((v: any) => ({
+        id: v.id,
+        title: v.title?.text || '',
+        author: v.author?.name || '',
+        authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+        duration: v.duration?.text || '',
+        views: v.short_view_count?.text || '',
+        published: v.published?.text || '',
+        thumbnail: v.thumbnails?.[0]?.url || ''
+      }));
+
+    shortsCache.set('default_shorts', results);
+    res.json({ results });
+  } catch (err: any) {
+    console.error('Shorts endpoint error:', err);
+    res.status(500).json({ error: err.message, results: [] });
   }
 });
 
