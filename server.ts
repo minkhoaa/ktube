@@ -2,11 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import { Innertube, Log, ClientType } from 'youtubei.js';
 import path from 'path';
+import { Readable } from 'node:stream';
 import { MemoryCache } from './cache';
 
 Log.setLevel(Log.Level.NONE);
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3000;
 
 export const infoCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 60 * 60 * 1000 });
@@ -286,8 +287,18 @@ app.get('/api/stream/segment', async (req, res) => {
     const contentLength = upstreamRes.headers.get('content-length');
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
-    const buf = Buffer.from(await upstreamRes.arrayBuffer());
-    res.send(buf);
+    if (upstreamRes.body) {
+      const nodeStream = Readable.fromWeb(upstreamRes.body as any);
+      nodeStream.on('error', (err) => {
+        if (!res.headersSent) res.status(500).end();
+      });
+      req.on('close', () => {
+        nodeStream.destroy();
+      });
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
   } catch (err: any) {
     console.error('Segment proxy error:', err);
     if (!res.headersSent) {
@@ -296,6 +307,8 @@ app.get('/api/stream/segment', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Pure Tuber Web Server running at http://localhost:${PORT}`);
-});
+if (import.meta.main) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Pure Tuber Web Server running at http://localhost:${PORT}`);
+  });
+}
