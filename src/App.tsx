@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { Navbar } from './components/Navbar/Navbar';
 import { Sidebar } from './components/Sidebar/Sidebar';
+import { FeedPage } from './components/Feed/FeedPage';
 import './styles/base.css';
 
 export type AppView = 'feed' | 'search' | 'watch';
@@ -95,9 +96,17 @@ export function App() {
         )}
 
         <main className={`content-area ${isWatch ? 'watch-mode' : (isSidebarOpen ? 'with-full-sidebar' : 'with-mini-sidebar')}`}>
-          <div style={{ padding: '20px' }}>
-            <h2>Giao diện YouTube (View: {view})</h2>
-          </div>
+          {view === 'feed' && <FeedPage onSelectVideo={navigateWatch} />}
+          {view === 'search' && (
+            <div style={{ padding: '20px' }}>
+              <h2>Kết quả tìm kiếm cho: "{searchQuery}"</h2>
+            </div>
+          )}
+          {view === 'watch' && (
+            <div style={{ padding: '20px' }}>
+              <h2>Đang phát video: {currentVideoId}</h2>
+            </div>
+          )}
         </main>
       </div>
     </div>

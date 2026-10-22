@@ -1,0 +1,70 @@
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px 16px;
+  width: 100%;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--yt-radius-lg);
+  background: var(--yt-bg-secondary);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-meta {
+  display: flex;
+  gap: 12px;
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--yt-bg-secondary);
+  flex-shrink: 0;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-text-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--yt-bg-secondary);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-line.title {
+  width: 90%;
+  height: 14px;
+}
+
+.skeleton-line.channel {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
+}
+
+@media (max-width: 480px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
