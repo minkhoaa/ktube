@@ -4,8 +4,11 @@ import { Sidebar } from './components/Sidebar/Sidebar';
 import { FeedPage } from './components/Feed/FeedPage';
 import { SearchResults } from './components/Search/SearchResults';
 import { WatchPage } from './components/Watch/WatchPage';
+import { HistoryPage } from './components/Library/HistoryPage';
+import { SubscriptionsPage } from './components/Library/SubscriptionsPage';
 import { PersistentPlayer } from './components/Player/PersistentPlayer';
 import { getAppState, subscribeAppState, setView, playVideo, setAppState } from './services/store';
+import { recordHistoryProgress } from './services/libraryStore';
 import './styles/base.css';
 
 export function App() {
@@ -34,6 +37,7 @@ export function App() {
       const params = new URLSearchParams(window.location.search);
       const v = params.get('v');
       const q = params.get('q');
+      const viewParam = params.get('view');
 
       if (v) {
         if (!appState.activeVideo || appState.activeVideo.id !== v) {
@@ -44,6 +48,10 @@ export function App() {
       } else if (q) {
         setAppState({ searchQuery: q });
         setView('search');
+      } else if (viewParam === 'history') {
+        setView('history');
+      } else if (viewParam === 'subscriptions') {
+        setView('subscriptions');
       } else {
         setView('feed');
       }
@@ -95,6 +103,33 @@ export function App() {
     });
   };
 
+  const navigateHistory = () => {
+    window.history.pushState({}, '', '/?view=history');
+    setView('history');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  const navigateSubscriptions = () => {
+    window.history.pushState({}, '', '/?view=subscriptions');
+    setView('subscriptions');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  // Auto-record history progress to libraryStore
+  useEffect(() => {
+    if (!appState.activeVideo || !appState.playerState.isPlaying) return;
+    const interval = setInterval(() => {
+      if (appState.activeVideo && appState.playerState.duration > 0) {
+        recordHistoryProgress(
+          appState.activeVideo,
+          appState.playerState.currentTime,
+          appState.playerState.duration
+        );
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [appState.activeVideo?.id, appState.playerState.isPlaying, appState.playerState.duration]);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
@@ -120,8 +155,10 @@ export function App() {
         {!isWatch && (
           <Sidebar
             isOpen={isSidebarOpen}
-            activeItem={appState.view === 'feed' ? 'home' : ''}
+            activeItem={appState.view}
             onNavigateHome={navigateHome}
+            onNavigateHistory={navigateHistory}
+            onNavigateSubscriptions={navigateSubscriptions}
             onSelectTopic={(topic) => navigateSearch(topic)}
           />
         )}
@@ -143,6 +180,20 @@ export function App() {
               query={appState.searchQuery}
               onSelectVideo={navigateWatch}
             />
+          </div>
+
+          <div
+            className="keep-alive-page history-page-slot"
+            style={{ display: appState.view === 'history' ? 'block' : 'none' }}
+          >
+            <HistoryPage onSelectVideo={navigateWatch} />
+          </div>
+
+          <div
+            className="keep-alive-page subscriptions-page-slot"
+            style={{ display: appState.view === 'subscriptions' ? 'block' : 'none' }}
+          >
+            <SubscriptionsPage onSelectVideo={navigateWatch} />
           </div>
 
           <div

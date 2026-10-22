@@ -16,11 +16,14 @@ export interface PlayerState {
   availableAudioTracks: Array<{ id: string; label: string; language: string }>;
 }
 
+export type AppView = 'feed' | 'search' | 'watch' | 'history' | 'subscriptions' | 'channel' | 'shorts';
+
 export interface AppState {
-  view: 'feed' | 'search' | 'watch';
+  view: AppView;
   activeVideo: ActiveVideo | null;
   playerState: PlayerState;
   searchQuery: string;
+  selectedChannelId?: string;
   scrollPositions: { feed: number; search: number };
 }
 
@@ -92,7 +95,7 @@ export function updatePlayerState(partial: Partial<PlayerState>): void {
   notify();
 }
 
-export function setView(view: 'feed' | 'search' | 'watch'): void {
+export function setView(view: AppView): void {
   let playerMode = state.playerState.mode;
   if (state.activeVideo) {
     if (view === 'watch') {

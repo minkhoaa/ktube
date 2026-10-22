@@ -4,10 +4,21 @@ interface SidebarProps {
   isOpen: boolean;
   activeItem?: string;
   onNavigateHome: () => void;
+  onNavigateHistory?: () => void;
+  onNavigateSubscriptions?: () => void;
+  onNavigateShorts?: () => void;
   onSelectTopic?: (topic: string) => void;
 }
 
-export function Sidebar({ isOpen, activeItem = 'home', onNavigateHome, onSelectTopic }: SidebarProps) {
+export function Sidebar({
+  isOpen,
+  activeItem = 'home',
+  onNavigateHome,
+  onNavigateHistory,
+  onNavigateSubscriptions,
+  onNavigateShorts,
+  onSelectTopic
+}: SidebarProps) {
   if (!isOpen) {
     return (
       <aside className="sidebar-mini">
@@ -22,25 +33,25 @@ export function Sidebar({ isOpen, activeItem = 'home', onNavigateHome, onSelectT
           <span>Trang chủ</span>
         </div>
 
-        <div className="mini-item" onClick={() => onSelectTopic?.('Shorts')} title="Shorts">
+        <div className={`mini-item ${activeItem === 'shorts' ? 'active' : ''}`} onClick={onNavigateShorts || (() => onSelectTopic?.('Shorts'))} title="Shorts">
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.77 10.32l-1.2-.5L18 9.06c1.84-.96 2.53-3.23 1.56-5.06s-3.24-2.53-5.07-1.56L6 6.94c-1.29.68-2.07 2.04-2 3.49.07 1.42.93 2.67 2.22 3.25.03.01 1.2.5 1.2.5L6 14.93c-1.83.97-2.53 3.24-1.56 5.07.97 1.83 3.24 2.53 5.07 1.56l8.5-4.5c1.29-.68 2.06-2.04 1.99-3.49-.07-1.42-.94-2.68-2.23-3.25zM10 14.5v-5l4.5 2.5-4.5 2.5z" />
           </svg>
           <span>Shorts</span>
         </div>
 
-        <div className="mini-item" title="Kênh đăng ký">
+        <div className={`mini-item ${activeItem === 'subscriptions' ? 'active' : ''}`} onClick={onNavigateSubscriptions} title="Kênh đăng ký">
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.7 8.7H5.3V7h13.4v1.7zm-1.7-5H7v1.7h10V3.7zm3.3 8.3v10c0 .9-.8 1.7-1.7 1.7H5.3c-.9 0-1.7-.8-1.7-1.7V12c0-.9.8-1.7 1.7-1.7h13.4c.9 0 1.6.8 1.6 1.7zm-6.7 5.5l-4.5-2.5v5l4.5-2.5z" />
           </svg>
           <span>Đăng ký</span>
         </div>
 
-        <div className="mini-item" title="Bạn">
+        <div className={`mini-item ${activeItem === 'history' ? 'active' : ''}`} onClick={onNavigateHistory} title="Video đã xem">
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
           </svg>
-          <span>Bạn</span>
+          <span>Đã xem</span>
         </div>
       </aside>
     );
@@ -59,14 +70,14 @@ export function Sidebar({ isOpen, activeItem = 'home', onNavigateHome, onSelectT
           <span>Trang chủ</span>
         </div>
 
-        <div className="sidebar-item" onClick={() => onSelectTopic?.('Shorts')}>
+        <div className={`sidebar-item ${activeItem === 'shorts' ? 'active' : ''}`} onClick={onNavigateShorts || (() => onSelectTopic?.('Shorts'))}>
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.77 10.32l-1.2-.5L18 9.06c1.84-.96 2.53-3.23 1.56-5.06s-3.24-2.53-5.07-1.56L6 6.94c-1.29.68-2.07 2.04-2 3.49.07 1.42.93 2.67 2.22 3.25.03.01 1.2.5 1.2.5L6 14.93c-1.83.97-2.53 3.24-1.56 5.07.97 1.83 3.24 2.53 5.07 1.56l8.5-4.5c1.29-.68 2.06-2.04 1.99-3.49-.07-1.42-.94-2.68-2.23-3.25zM10 14.5v-5l4.5 2.5-4.5 2.5z" />
           </svg>
           <span>Shorts</span>
         </div>
 
-        <div className="sidebar-item">
+        <div className={`sidebar-item ${activeItem === 'subscriptions' ? 'active' : ''}`} onClick={onNavigateSubscriptions}>
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.7 8.7H5.3V7h13.4v1.7zm-1.7-5H7v1.7h10V3.7zm3.3 8.3v10c0 .9-.8 1.7-1.7 1.7H5.3c-.9 0-1.7-.8-1.7-1.7V12c0-.9.8-1.7 1.7-1.7h13.4c.9 0 1.6.8 1.6 1.7zm-6.7 5.5l-4.5-2.5v5l4.5-2.5z" />
           </svg>
@@ -78,7 +89,7 @@ export function Sidebar({ isOpen, activeItem = 'home', onNavigateHome, onSelectT
 
       <div className="sidebar-section">
         <span className="sidebar-section-title">Bạn &gt;</span>
-        <div className="sidebar-item">
+        <div className={`sidebar-item ${activeItem === 'history' ? 'active' : ''}`} onClick={onNavigateHistory}>
           <svg className="sidebar-item-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
           </svg>
