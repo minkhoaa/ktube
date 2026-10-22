@@ -1,0 +1,35 @@
+.watch-page-container {
+  max-width: 1750px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.watch-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+}
+
+.watch-primary-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.watch-secondary-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.theater-top-player {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .watch-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

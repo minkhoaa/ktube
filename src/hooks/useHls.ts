@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import Hls from 'hls.js';
+import Hls from 'hls.js/dist/hls.light.mjs';
 
 export interface QualityLevel {
   id: number;
