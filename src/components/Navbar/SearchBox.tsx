@@ -16,12 +16,15 @@ export function SearchBox({ initialQuery = '', onSearch }: SearchBoxProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<any>(null);
 
+  const lastQueryRef = useRef(query);
+
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  // Fetch suggestions with debounce
+  // Fetch suggestions with debounce and race condition prevention
   useEffect(() => {
+    lastQueryRef.current = query;
     clearTimeout(debounceTimerRef.current);
     if (!query.trim()) {
       setSuggestions([]);
@@ -29,14 +32,20 @@ export function SearchBox({ initialQuery = '', onSearch }: SearchBoxProps) {
       return;
     }
 
+    const currentReq = query;
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const items = await fetchSuggestions(query);
-        setSuggestions(items);
-        setIsOpen(items.length > 0);
-        setSelectedIndex(-1);
+        const items = await fetchSuggestions(currentReq);
+        // Only update if user hasn't typed something else in the meantime
+        if (lastQueryRef.current === currentReq) {
+          setSuggestions(items);
+          setIsOpen(items.length > 0);
+          setSelectedIndex(-1);
+        }
       } catch {
-        setSuggestions([]);
+        if (lastQueryRef.current === currentReq) {
+          setSuggestions([]);
+        }
       }
     }, 150);
 
