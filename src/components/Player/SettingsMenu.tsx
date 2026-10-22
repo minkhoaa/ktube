@@ -12,9 +12,14 @@ interface SettingsMenuProps {
   playbackRate: number;
   onSelectPlaybackRate: (rate: number) => void;
   onClose: () => void;
+  availableLanguages?: Array<{ code: string; name: string }>;
+  selectedLanguage?: string | null;
+  onSelectLanguage?: (code: string | null) => void;
+  isAmbientEnabled?: boolean;
+  onToggleAmbient?: () => void;
 }
 
-type MenuPage = 'main' | 'quality' | 'speed' | 'audio';
+type MenuPage = 'main' | 'quality' | 'speed' | 'audio' | 'captions';
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
@@ -27,7 +32,12 @@ export function SettingsMenu({
   onSelectAudioTrack,
   playbackRate,
   onSelectPlaybackRate,
-  onClose
+  onClose,
+  availableLanguages = [],
+  selectedLanguage = null,
+  onSelectLanguage,
+  isAmbientEnabled = true,
+  onToggleAmbient
 }: SettingsMenuProps) {
   const [page, setPage] = useState<MenuPage>('main');
 
@@ -48,6 +58,46 @@ export function SettingsMenu({
     if (!current) return 'Gốc';
     return current.isVietnamese ? 'Tiếng Việt (Thuyết minh)' : current.name;
   };
+
+  const getCurrentCaptionsLabel = () => {
+    if (!selectedLanguage) return 'Tắt';
+    const found = availableLanguages.find((l) => l.code === selectedLanguage);
+    return found ? found.name : 'Bật';
+  };
+
+  if (page === 'captions') {
+    return (
+      <div className="settings-popup">
+        <div className="settings-header" onClick={() => setPage('main')}>
+          <span>‹</span>
+          <span>Phụ đề</span>
+        </div>
+        <div
+          className="settings-item"
+          onClick={() => {
+            onSelectLanguage?.(null);
+            onClose();
+          }}
+        >
+          <span>Tắt</span>
+          {!selectedLanguage && <span className="settings-check-icon">✓</span>}
+        </div>
+        {availableLanguages.map((lang) => (
+          <div
+            key={lang.code}
+            className="settings-item"
+            onClick={() => {
+              onSelectLanguage?.(lang.code);
+              onClose();
+            }}
+          >
+            <span>{lang.name}</span>
+            {selectedLanguage === lang.code && <span className="settings-check-icon">✓</span>}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (page === 'quality') {
     return (
@@ -171,6 +221,27 @@ export function SettingsMenu({
         <div className="settings-item-right">
           <span>{getCurrentSpeedLabel()}</span>
           <span>›</span>
+        </div>
+      </div>
+      <div className="settings-item" onClick={() => setPage('captions')}>
+        <div className="settings-item-left">
+          <span>Phụ đề</span>
+        </div>
+        <div className="settings-item-right">
+          <span>{getCurrentCaptionsLabel()}</span>
+          <span>›</span>
+        </div>
+      </div>
+
+      <div
+        className="settings-item"
+        onClick={() => onToggleAmbient?.()}
+      >
+        <div className="settings-item-left">
+          <span>Ánh sáng nền (Ambient)</span>
+        </div>
+        <div className="settings-item-right">
+          <span>{isAmbientEnabled ? 'Bật' : 'Tắt'}</span>
         </div>
       </div>
     </div>

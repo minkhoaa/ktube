@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { useHls } from '../../hooks/useHls';
+import { useCaptions } from '../../hooks/useCaptions';
+import { CaptionsOverlay } from './CaptionsOverlay';
 import { Seekbar } from './Seekbar';
 import { Controls } from './Controls';
 import { SettingsMenu } from './SettingsMenu';
@@ -39,6 +41,15 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
     error,
     retry
   } = useHls(videoRef, videoId);
+
+  const {
+    availableLanguages,
+    selectedLanguage,
+    currentCueText,
+    hasCaptions,
+    toggleCaptions,
+    setLanguage
+  } = useCaptions(videoRef, videoId);
 
   // Sync video events
   useEffect(() => {
@@ -164,6 +175,10 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
           e.preventDefault();
           onToggleTheater();
           break;
+        case 'c':
+          e.preventDefault();
+          toggleCaptions();
+          break;
         case 'j':
           e.preventDefault();
           video.currentTime = Math.max(0, video.currentTime - 10);
@@ -246,9 +261,15 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
           onSelectAudioTrack={setAudioTrack}
           playbackRate={playbackRate}
           onSelectPlaybackRate={changePlaybackRate}
+          availableLanguages={availableLanguages}
+          selectedLanguage={selectedLanguage}
+          onSelectLanguage={setLanguage}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
+
+      {/* Captions Text Overlay */}
+      <CaptionsOverlay text={currentCueText} />
 
       {/* Error Overlay */}
       {error && (
@@ -279,6 +300,9 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
           onToggleFullscreen={toggleFullscreen}
           onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
           isSettingsOpen={isSettingsOpen}
+          isCaptionsActive={!!selectedLanguage}
+          hasCaptions={hasCaptions}
+          onToggleCaptions={toggleCaptions}
         />
       </div>
     </div>

@@ -16,6 +16,9 @@ interface ControlsProps {
   onToggleFullscreen: () => void;
   onToggleSettings: () => void;
   isSettingsOpen: boolean;
+  isCaptionsActive?: boolean;
+  hasCaptions?: boolean;
+  onToggleCaptions?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -45,7 +48,10 @@ export function Controls({
   onTogglePiP,
   onToggleFullscreen,
   onToggleSettings,
-  isSettingsOpen
+  isSettingsOpen,
+  isCaptionsActive = false,
+  hasCaptions = false,
+  onToggleCaptions
 }: ControlsProps) {
   const currentVol = isMuted ? 0 : volume;
 
@@ -108,6 +114,17 @@ export function Controls({
 
       {/* Right controls */}
       <div className="controls-right">
+        <button
+          className={`control-btn ${isCaptionsActive ? 'active' : ''}`}
+          onClick={onToggleCaptions}
+          disabled={!hasCaptions}
+          title={isCaptionsActive ? 'Tắt phụ đề (c)' : 'Bật phụ đề (c)'}
+          style={{ opacity: hasCaptions ? 1 : 0.4 }}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z" />
+          </svg>
+        </button>
         <button
           className={`control-btn ${isSettingsOpen ? 'active' : ''}`}
           onClick={onToggleSettings}
