@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { useHls } from '../../hooks/useHls';
 import { useCaptions } from '../../hooks/useCaptions';
+import { useAmbientCanvas } from '../../hooks/useAmbientCanvas';
 import { CaptionsOverlay } from './CaptionsOverlay';
 import { Seekbar } from './Seekbar';
 import { Controls } from './Controls';
 import { SettingsMenu } from './SettingsMenu';
 import './CustomPlayer.css';
+import '../../styles/ambient.css';
 
 interface CustomPlayerProps {
   videoId: string;
@@ -26,9 +28,11 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isIdle, setIsIdle] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAmbientEnabled, setIsAmbientEnabled] = useState(true);
   const [splashState, setSplashState] = useState<'play' | 'pause' | null>(null);
 
   const idleTimerRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const {
     levels,
@@ -50,6 +54,9 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
     toggleCaptions,
     setLanguage
   } = useCaptions(videoRef, videoId);
+
+  // Sample ambient glow on canvas
+  useAmbientCanvas(videoRef, canvasRef, isAmbientEnabled);
 
   // Sync video events
   useEffect(() => {
@@ -217,6 +224,16 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
       onMouseMove={resetIdleTimer}
       onMouseLeave={() => isPlaying && !isSettingsOpen && setIsIdle(true)}
     >
+      {/* Ambient Lighting Canvas Backdrop */}
+      <div className="player-ambient-canvas-wrapper">
+        <canvas
+          ref={canvasRef}
+          className={`player-ambient-canvas ${!isAmbientEnabled ? 'ambient-hidden' : ''}`}
+          width={64}
+          height={36}
+        />
+      </div>
+
       <video
         ref={videoRef}
         className="player-video-element"
@@ -264,6 +281,8 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
           availableLanguages={availableLanguages}
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setLanguage}
+          isAmbientEnabled={isAmbientEnabled}
+          onToggleAmbient={() => setIsAmbientEnabled(prev => !prev)}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

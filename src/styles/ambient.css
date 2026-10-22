@@ -1,0 +1,27 @@
+/* Ambient Mode Glowing Canvas Backdrop */
+.player-ambient-canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.player-ambient-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 115%;
+  height: 115%;
+  transform: translate(-50%, -50%);
+  filter: blur(52px) opacity(0.65);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.player-ambient-canvas.ambient-hidden {
+  opacity: 0 !important;
+}
