@@ -1,0 +1,92 @@
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { getAppState, subscribeAppState, setView, closePlayer } from '../../services/store';
+import { CustomPlayer } from './CustomPlayer';
+import '../../styles/player.css';
+
+export function PersistentPlayer() {
+  const [state, setState] = useState(getAppState());
+  const playerWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return subscribeAppState((newState) => {
+      setState({ ...newState });
+    });
+  }, []);
+
+  const { activeVideo, playerState, view } = state;
+
+  // DOM Reparenting: Seamless docking into WatchPage vs Floating Miniplayer
+  useEffect(() => {
+    const wrapper = playerWrapperRef.current;
+    if (!wrapper) return;
+
+    if (!activeVideo || playerState.mode === 'hidden') {
+      wrapper.className = 'persistent-player-wrapper mode-hidden';
+      return;
+    }
+
+    if (view === 'watch' && playerState.mode === 'docked') {
+      const dockSlot = document.getElementById('player-dock-slot');
+      if (dockSlot && wrapper.parentElement !== dockSlot) {
+        dockSlot.appendChild(wrapper);
+      }
+      wrapper.className = 'persistent-player-wrapper mode-docked';
+    } else if (playerState.mode === 'miniplayer') {
+      const host = document.getElementById('persistent-player-host') || document.body;
+      if (wrapper.parentElement !== host) {
+        host.appendChild(wrapper);
+      }
+      wrapper.className = 'persistent-player-wrapper mode-miniplayer';
+    }
+  }, [view, playerState.mode, activeVideo]);
+
+  if (!activeVideo) {
+    return (
+      <div id="persistent-player-host">
+        <div ref={playerWrapperRef} className="persistent-player-wrapper mode-hidden" />
+      </div>
+    );
+  }
+
+  const isMiniplayer = playerState.mode === 'miniplayer';
+
+  return (
+    <div id="persistent-player-host">
+      <div ref={playerWrapperRef} className={`persistent-player-wrapper ${isMiniplayer ? 'mode-miniplayer' : 'mode-docked'}`}>
+        {isMiniplayer && (
+          <div className="miniplayer-header-bar">
+            <span className="miniplayer-title" title={activeVideo.title}>
+              {activeVideo.title}
+            </span>
+            <div className="miniplayer-actions">
+              <button
+                className="miniplayer-btn"
+                title="Mở rộng xem toàn màn hình"
+                onClick={() => setView('watch')}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M5 19h14v-2H5v2zm0-4h14v-2H5v2zm0-4h14V9H5v2zm0-6v2h14V5H5z"/>
+                </svg>
+              </button>
+              <button
+                className="miniplayer-btn"
+                title="Đóng trình phát"
+                onClick={() => closePlayer()}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <CustomPlayer
+          videoId={activeVideo.id}
+          isTheater={false}
+          onToggleTheater={() => {}}
+        />
+      </div>
+    </div>
+  );
+}

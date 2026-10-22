@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { VideoInfo } from '../../types';
 import { fetchVideoInfo } from '../../services/api';
-import { CustomPlayer } from '../Player/CustomPlayer';
 import { VideoMetadata } from './VideoMetadata';
 import { DescriptionBox } from './DescriptionBox';
 import { CommentsSection } from './CommentsSection';
@@ -57,28 +56,21 @@ export function WatchPage({ videoId, onSelectVideo }: WatchPageProps) {
     );
   }
 
-  const playerComponent = (
-    <CustomPlayer
-      videoId={videoId}
-      isTheater={isTheater}
-      onToggleTheater={() => setIsTheater(!isTheater)}
-      onNext={nextVideoId ? handleNext : undefined}
-    />
-  );
+  const dockSlot = <div id="player-dock-slot" className="player-dock-slot" />;
 
   return (
     <div className="watch-page-container">
       {/* If Theater Mode, player sits at the top full width */}
       {isTheater && (
         <div className="theater-top-player">
-          {playerComponent}
+          {dockSlot}
         </div>
       )}
 
       <div className="watch-layout-grid">
         {/* Left Column */}
         <div className="watch-primary-col">
-          {!isTheater && playerComponent}
+          {!isTheater && dockSlot}
 
           {videoInfo && <VideoMetadata info={videoInfo} />}
           {videoInfo && <DescriptionBox description={videoInfo.description} />}

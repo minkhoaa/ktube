@@ -1,0 +1,108 @@
+/* Persistent Player Root Container */
+.persistent-player-wrapper {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.persistent-player-wrapper.mode-hidden {
+  display: none !important;
+}
+
+/* Docked mode: Fills the watch page player slot */
+.persistent-player-wrapper.mode-docked {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+/* Miniplayer mode: Fixed floating window at bottom-right */
+.persistent-player-wrapper.mode-miniplayer {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 380px;
+  height: 214px;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 2000;
+  background: #0f0f0f;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Miniplayer overlay controls */
+.miniplayer-header-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.persistent-player-wrapper.mode-miniplayer:hover .miniplayer-header-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.miniplayer-title {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.miniplayer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.miniplayer-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.miniplayer-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile responsive Miniplayer (< 656px) */
+@media (max-width: 656px) {
+  .persistent-player-wrapper.mode-miniplayer {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+  }
+}
