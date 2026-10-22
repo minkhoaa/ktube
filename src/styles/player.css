@@ -46,15 +46,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
-  z-index: 100;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
+  z-index: 3000;
+  pointer-events: auto;
 }
 
-.persistent-player-wrapper.mode-miniplayer:hover .miniplayer-header-bar {
-  opacity: 1;
-  pointer-events: auto;
+.persistent-player-wrapper.mode-miniplayer .player-controls-bottom,
+.persistent-player-wrapper.mode-miniplayer .player-top-controls {
+  display: none !important;
 }
 
 .miniplayer-title {
