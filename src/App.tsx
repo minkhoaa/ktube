@@ -7,6 +7,7 @@ import { WatchPage } from './components/Watch/WatchPage';
 import { HistoryPage } from './components/Library/HistoryPage';
 import { SubscriptionsPage } from './components/Library/SubscriptionsPage';
 import { ChannelPage } from './components/Channel/ChannelPage';
+import { ShortsPage } from './components/Shorts/ShortsPage';
 import { PersistentPlayer } from './components/Player/PersistentPlayer';
 import { getAppState, subscribeAppState, setView, playVideo, setAppState } from './services/store';
 import { recordHistoryProgress } from './services/libraryStore';
@@ -57,6 +58,8 @@ export function App() {
         setView('history');
       } else if (viewParam === 'subscriptions') {
         setView('subscriptions');
+      } else if (viewParam === 'shorts') {
+        setView('shorts');
       } else {
         setView('feed');
       }
@@ -120,6 +123,12 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
+  const navigateShorts = () => {
+    window.history.pushState({}, '', '/?view=shorts');
+    setView('shorts');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
   const navigateChannel = (channelId: string) => {
     window.history.pushState({}, '', `/?c=${encodeURIComponent(channelId)}`);
     setAppState({ selectedChannelId: channelId });
@@ -171,6 +180,7 @@ export function App() {
             onNavigateHome={navigateHome}
             onNavigateHistory={navigateHistory}
             onNavigateSubscriptions={navigateSubscriptions}
+            onNavigateShorts={navigateShorts}
             onSelectTopic={(topic) => navigateSearch(topic)}
           />
         )}
@@ -218,6 +228,13 @@ export function App() {
                 onSelectVideo={navigateWatch}
               />
             )}
+          </div>
+
+          <div
+            className="keep-alive-page shorts-page-slot"
+            style={{ display: appState.view === 'shorts' ? 'block' : 'none' }}
+          >
+            <ShortsPage onSelectChannel={navigateChannel} />
           </div>
 
           <div
