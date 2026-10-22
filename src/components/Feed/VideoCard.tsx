@@ -1,10 +1,11 @@
-import { useRef } from 'preact/hooks';
+import { useRef, useEffect } from 'preact/hooks';
 import type { VideoItem } from '../../types';
+import { thumbnailObserver } from '../../services/imageObserver';
 import './VideoCard.css';
 
 interface VideoCardProps {
   video: VideoItem;
-  onSelect: (videoId: string) => void;
+  onSelect: (videoId: string, title?: string, author?: string, thumbnail?: string) => void;
 }
 
 const prefetchedIds = new Set<string>();
@@ -19,6 +20,18 @@ function prefetchVideo(id: string) {
 export function VideoCard({ video, onSelect }: VideoCardProps) {
   const hoverTimer = useRef<any>(null);
   const touchTimer = useRef<any>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Centralized batch thumbnail observer
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || !thumbnailObserver) return;
+
+    thumbnailObserver.observe(img);
+    return () => {
+      thumbnailObserver?.unobserve(img);
+    };
+  }, [video.thumbnail]);
 
   const handleMouseEnter = () => {
     clearTimeout(hoverTimer.current);
@@ -45,7 +58,7 @@ export function VideoCard({ video, onSelect }: VideoCardProps) {
   return (
     <div
       className="video-card"
-      onClick={() => onSelect(video.id)}
+      onClick={() => onSelect(video.id, video.title, video.author, video.thumbnail)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
@@ -53,10 +66,11 @@ export function VideoCard({ video, onSelect }: VideoCardProps) {
     >
       <div className="thumbnail-container">
         <img
-          className="thumbnail-img"
-          src={video.thumbnail || 'https://via.placeholder.com/640x360?text=YouTube'}
+          ref={imgRef}
+          className="thumbnail-img yt-lazy-thumb"
+          data-src={video.thumbnail || 'https://via.placeholder.com/640x360?text=YouTube'}
+          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3C/svg%3E"
           alt={video.title}
-          loading="lazy"
         />
         {video.duration && <span className="duration-badge">{video.duration}</span>}
       </div>
