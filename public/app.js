@@ -32,12 +32,36 @@ document.addEventListener('DOMContentLoaded', () => {
     return raw;
   }
 
+  // Speculative Preloading
+  const prefetchedIds = new Set();
+  let hoverTimeout = null;
+
+  function prefetchVideo(videoId) {
+    const cleanId = cleanVideoId(videoId);
+    if (!cleanId || prefetchedIds.has(cleanId)) return;
+    prefetchedIds.add(cleanId);
+
+    // Pre-warm server cache for info & master manifest
+    fetch(`/api/info?v=${encodeURIComponent(cleanId)}`, { priority: 'low' }).catch(() => {});
+    fetch(`/api/stream/master.m3u8?v=${encodeURIComponent(cleanId)}`, { priority: 'low' }).catch(() => {});
+  }
+
   // Setup Chips
   chips.forEach(chip => {
+    const vid = chip.getAttribute('data-id');
     chip.addEventListener('click', () => {
-      const vid = chip.getAttribute('data-id');
       if (vid) loadAndPlayVideo(vid);
     });
+    if (vid) {
+      chip.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => prefetchVideo(vid), 150);
+      });
+      chip.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+      });
+      chip.addEventListener('touchstart', () => prefetchVideo(vid), { passive: true });
+    }
   });
 
   // Audio Select change listener
@@ -106,6 +130,14 @@ document.addEventListener('DOMContentLoaded', () => {
       card.addEventListener('click', () => {
         loadAndPlayVideo(v.id);
       });
+      card.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => prefetchVideo(v.id), 150);
+      });
+      card.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+      });
+      card.addEventListener('touchstart', () => prefetchVideo(v.id), { passive: true });
       videoGrid.appendChild(card);
     });
   }
