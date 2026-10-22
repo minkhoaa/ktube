@@ -193,7 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
         hlsInstance = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          backBufferLength: 90,
+          startLevel: 0, // Loads the lowest resolution chunk first (< 50KB) for instant start
+          startFragPrefetch: true, // Prefetches the next fragment ahead of time
+          capLevelToPlayerSize: true, // Optimizes bandwidth according to display resolution
+          maxBufferLength: 60,
+          maxMaxBufferLength: 120,
+          backBufferLength: 60,
           audioPreference: {
             lang: 'vi'
           }
@@ -201,6 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         hlsInstance.loadSource(streamUrl);
         hlsInstance.attachMedia(videoElement);
+
+        videoElement.addEventListener('playing', () => {
+          if (hlsInstance && hlsInstance.autoLevelEnabled === false) {
+            hlsInstance.currentLevel = -1; // Re-enable auto ABR
+          }
+        }, { once: true });
 
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
           loadingOverlay.classList.add('hidden');
