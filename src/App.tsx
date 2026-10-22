@@ -1,26 +1,34 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { Navbar } from './components/Navbar/Navbar';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { FeedPage } from './components/Feed/FeedPage';
 import { SearchResults } from './components/Search/SearchResults';
 import { WatchPage } from './components/Watch/WatchPage';
+import { PersistentPlayer } from './components/Player/PersistentPlayer';
+import { getAppState, subscribeAppState, setView, playVideo, setAppState } from './services/store';
 import './styles/base.css';
 
-export type AppView = 'feed' | 'search' | 'watch';
-
 export function App() {
-  const [view, setView] = useState<AppView>('feed');
-  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [appState, setAppStateLocal] = useState(getAppState());
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+
+  const feedScrollRef = useRef<number>(0);
+  const searchScrollRef = useRef<number>(0);
 
   // Sync theme with DOM attribute
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Handle URL route synchronization (deep links & back/forward)
+  // Subscribe to reactive store
+  useEffect(() => {
+    return subscribeAppState((newState) => {
+      setAppStateLocal({ ...newState });
+    });
+  }, []);
+
+  // Handle URL route synchronization (deep links & back/forward popstate)
   useEffect(() => {
     function parseUrl() {
       const params = new URLSearchParams(window.location.search);
@@ -28,14 +36,16 @@ export function App() {
       const q = params.get('q');
 
       if (v) {
-        setCurrentVideoId(v);
-        setView('watch');
+        if (!appState.activeVideo || appState.activeVideo.id !== v) {
+          playVideo({ id: v, title: 'Video', author: '', thumbnail: '' });
+        } else {
+          setView('watch');
+        }
       } else if (q) {
-        setSearchQuery(q);
+        setAppState({ searchQuery: q });
         setView('search');
       } else {
         setView('feed');
-        setCurrentVideoId(null);
       }
     }
 
@@ -44,26 +54,45 @@ export function App() {
     return () => window.removeEventListener('popstate', parseUrl);
   }, []);
 
-  const navigateWatch = (id: string) => {
+  const navigateWatch = (id: string, title?: string, author?: string, thumbnail?: string) => {
+    // Record current scroll position before leaving
+    if (appState.view === 'feed') feedScrollRef.current = window.scrollY;
+    if (appState.view === 'search') searchScrollRef.current = window.scrollY;
+
     window.history.pushState({}, '', `/?v=${encodeURIComponent(id)}`);
-    setCurrentVideoId(id);
-    setView('watch');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    playVideo({
+      id,
+      title: title || 'YouTube Video',
+      author: author || '',
+      thumbnail: thumbnail || ''
+    });
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
   };
 
   const navigateSearch = (q: string) => {
+    if (appState.view === 'feed') feedScrollRef.current = window.scrollY;
+
     window.history.pushState({}, '', `/?q=${encodeURIComponent(q)}`);
-    setSearchQuery(q);
+    setAppState({ searchQuery: q });
     setView('search');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: searchScrollRef.current, behavior: 'instant' });
+    });
   };
 
   const navigateHome = () => {
+    if (appState.view === 'search') searchScrollRef.current = window.scrollY;
+
     window.history.pushState({}, '', '/');
     setView('feed');
-    setCurrentVideoId(null);
-    setSearchQuery('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: feedScrollRef.current, behavior: 'instant' });
+    });
   };
 
   const toggleTheme = () => {
@@ -74,7 +103,7 @@ export function App() {
     setIsSidebarOpen(prev => !prev);
   };
 
-  const isWatch = view === 'watch';
+  const isWatch = appState.view === 'watch';
 
   return (
     <div className="app-container">
@@ -84,27 +113,54 @@ export function App() {
         onToggleSidebar={toggleSidebar}
         onNavigateHome={navigateHome}
         onSearch={navigateSearch}
-        initialQuery={searchQuery}
+        initialQuery={appState.searchQuery}
       />
 
       <div className="main-layout">
         {!isWatch && (
           <Sidebar
             isOpen={isSidebarOpen}
-            activeItem={view === 'feed' ? 'home' : ''}
+            activeItem={appState.view === 'feed' ? 'home' : ''}
             onNavigateHome={navigateHome}
             onSelectTopic={(topic) => navigateSearch(topic)}
           />
         )}
 
         <main className={`content-area ${isWatch ? 'watch-mode' : (isSidebarOpen ? 'with-full-sidebar' : 'with-mini-sidebar')}`}>
-          {view === 'feed' && <FeedPage onSelectVideo={navigateWatch} />}
-          {view === 'search' && <SearchResults query={searchQuery} onSelectVideo={navigateWatch} />}
-          {view === 'watch' && currentVideoId && (
-            <WatchPage videoId={currentVideoId} onSelectVideo={navigateWatch} />
-          )}
+          {/* Keep-Alive Viewport: DOM Recycling of All 3 Pages */}
+          <div
+            className="keep-alive-page feed-page-slot"
+            style={{ display: appState.view === 'feed' ? 'block' : 'none' }}
+          >
+            <FeedPage onSelectVideo={navigateWatch} />
+          </div>
+
+          <div
+            className="keep-alive-page search-page-slot"
+            style={{ display: appState.view === 'search' ? 'block' : 'none' }}
+          >
+            <SearchResults
+              query={appState.searchQuery}
+              onSelectVideo={navigateWatch}
+            />
+          </div>
+
+          <div
+            className="keep-alive-page watch-page-slot"
+            style={{ display: appState.view === 'watch' ? 'block' : 'none' }}
+          >
+            {appState.activeVideo && (
+              <WatchPage
+                videoId={appState.activeVideo.id}
+                onSelectVideo={navigateWatch}
+              />
+            )}
+          </div>
         </main>
       </div>
+
+      {/* Persistent Root Player: Singleton Video Node across entire app */}
+      <PersistentPlayer />
     </div>
   );
 }
