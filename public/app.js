@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Speculative Preloading
   const prefetchedIds = new Set();
   let hoverTimeout = null;
+  let touchTimeout = null;
 
   function prefetchVideo(videoId) {
     const cleanId = cleanVideoId(videoId);
@@ -60,7 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
       chip.addEventListener('mouseleave', () => {
         clearTimeout(hoverTimeout);
       });
-      chip.addEventListener('touchstart', () => prefetchVideo(vid), { passive: true });
+      chip.addEventListener('touchstart', () => {
+        clearTimeout(touchTimeout);
+        touchTimeout = setTimeout(() => prefetchVideo(vid), 100);
+      }, { passive: true });
+      chip.addEventListener('touchmove', () => {
+        clearTimeout(touchTimeout);
+      }, { passive: true });
+      chip.addEventListener('touchend', () => {
+        clearTimeout(touchTimeout);
+      }, { passive: true });
     }
   });
 
@@ -137,7 +147,16 @@ document.addEventListener('DOMContentLoaded', () => {
       card.addEventListener('mouseleave', () => {
         clearTimeout(hoverTimeout);
       });
-      card.addEventListener('touchstart', () => prefetchVideo(v.id), { passive: true });
+      card.addEventListener('touchstart', () => {
+        clearTimeout(touchTimeout);
+        touchTimeout = setTimeout(() => prefetchVideo(v.id), 100);
+      }, { passive: true });
+      card.addEventListener('touchmove', () => {
+        clearTimeout(touchTimeout);
+      }, { passive: true });
+      card.addEventListener('touchend', () => {
+        clearTimeout(touchTimeout);
+      }, { passive: true });
       videoGrid.appendChild(card);
     });
   }

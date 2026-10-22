@@ -17,6 +17,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+function isValidStreamHost(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+    const host = parsed.hostname.toLowerCase();
+    return host === 'googlevideo.com' || host.endsWith('.googlevideo.com') ||
+           host === 'youtube.com' || host.endsWith('.youtube.com');
+  } catch {
+    return false;
+  }
+}
+
 function cleanVideoId(raw: string): string {
   if (!raw) return '';
   raw = raw.trim();
@@ -204,7 +218,13 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
       return line;
     }).join('\n');
 
-    manifestCache.set(videoId, rewritten);
+    let manifestTtlMs = 30 * 60 * 1000;
+    const expireMatch = hlsUrl.match(/\/expire\/(\d+)/) || hlsUrl.match(/[?&]expire=(\d+)/);
+    if (expireMatch) {
+      const remainingMs = parseInt(expireMatch[1], 10) * 1000 - Date.now();
+      if (remainingMs > 0) manifestTtlMs = Math.min(manifestTtlMs, remainingMs);
+    }
+    manifestCache.set(videoId, rewritten, manifestTtlMs);
 
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -221,6 +241,10 @@ app.get('/api/stream/sub', async (req, res) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
       return res.status(400).send('Missing url parameter');
+    }
+
+    if (!isValidStreamHost(targetUrl)) {
+      return res.status(403).send('Forbidden');
     }
 
     const upstreamRes = await fetch(targetUrl);
@@ -270,12 +294,16 @@ app.get('/api/stream/segment', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
+    if (!isValidStreamHost(targetUrl)) {
+      return res.status(403).send('Forbidden');
+    }
+
     const headers: Record<string, string> = {};
     if (req.headers.range) {
       headers['Range'] = req.headers.range as string;
     }
 
-    const upstreamRes = await fetch(targetUrl, { headers });
+    const upstreamRes = await fetch(targetUrl, { headers, signal: req.signal });
 
     res.status(upstreamRes.status);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -290,16 +318,22 @@ app.get('/api/stream/segment', async (req, res) => {
     if (upstreamRes.body) {
       const nodeStream = Readable.fromWeb(upstreamRes.body as any);
       nodeStream.on('error', (err) => {
-        if (!res.headersSent) res.status(500).end();
+        if (!res.headersSent) {
+          res.status(500).end();
+        } else {
+          res.destroy(err);
+        }
       });
       req.on('close', () => {
         nodeStream.destroy();
       });
+      if (req.destroyed) return;
       nodeStream.pipe(res);
     } else {
       res.end();
     }
   } catch (err: any) {
+    if (req.destroyed) return;
     console.error('Segment proxy error:', err);
     if (!res.headersSent) {
       res.status(500).send(err.message);
