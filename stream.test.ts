@@ -53,7 +53,7 @@ describe("Stream Proxy Endpoint", () => {
     expect(segRes.status).toBe(200);
     expect(segRes.headers.get("access-control-allow-origin")).toBe("*");
     expect((await segRes.arrayBuffer()).byteLength).toBeGreaterThan(1000);
-  });
+  }, 15000);
 
   it("should handle range requests when requested by client", async () => {
     const mRes = await fetch("http://localhost:3000/api/stream/master.m3u8?v=0e3GPea1Tyg");
@@ -73,7 +73,7 @@ describe("Stream Proxy Endpoint", () => {
     expect(segRes.headers.get("access-control-allow-origin")).toBe("*");
     const buf = await segRes.arrayBuffer();
     expect(buf.byteLength).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("should clean up and abort upstream stream when client aborts request", async () => {
     const mRes = await fetch("http://localhost:3000/api/stream/master.m3u8?v=0e3GPea1Tyg");

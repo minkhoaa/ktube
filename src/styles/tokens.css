@@ -1,0 +1,66 @@
+:root {
+  --yt-red: #ff0000;
+  --yt-red-hover: #cc0000;
+  --yt-font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --yt-navbar-height: 56px;
+  --yt-sidebar-width: 240px;
+  --yt-mini-sidebar-width: 72px;
+  --yt-radius-sm: 4px;
+  --yt-radius-md: 8px;
+  --yt-radius-lg: 12px;
+  --yt-radius-full: 9999px;
+  --yt-transition-fast: 0.15s ease;
+  --yt-transition-normal: 0.25s ease;
+}
+
+[data-theme="dark"] {
+  --yt-bg-primary: #0f0f0f;
+  --yt-bg-secondary: #222222;
+  --yt-bg-tertiary: #272727;
+  --yt-bg-hover: rgba(255, 255, 255, 0.1);
+  --yt-bg-active: rgba(255, 255, 255, 0.2);
+  --yt-bg-chip: #272727;
+  --yt-bg-chip-active: #ffffff;
+  --yt-text-chip-active: #0f0f0f;
+  
+  --yt-text-primary: #f1f1f1;
+  --yt-text-secondary: #aaaaaa;
+  --yt-text-disabled: #717171;
+  --yt-text-inverse: #0f0f0f;
+
+  --yt-border-color: rgba(255, 255, 255, 0.1);
+  --yt-border-subtle: #303030;
+  --yt-search-bg: #121212;
+  --yt-search-border: #303030;
+  --yt-search-btn-bg: #222222;
+  --yt-player-bg: #000000;
+  --yt-badge-bg: rgba(0, 0, 0, 0.8);
+  --yt-badge-text: #ffffff;
+  --yt-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="light"] {
+  --yt-bg-primary: #ffffff;
+  --yt-bg-secondary: #f2f2f2;
+  --yt-bg-tertiary: #e5e5e5;
+  --yt-bg-hover: rgba(0, 0, 0, 0.05);
+  --yt-bg-active: rgba(0, 0, 0, 0.1);
+  --yt-bg-chip: #f2f2f2;
+  --yt-bg-chip-active: #0f0f0f;
+  --yt-text-chip-active: #ffffff;
+
+  --yt-text-primary: #0f0f0f;
+  --yt-text-secondary: #606060;
+  --yt-text-disabled: #909090;
+  --yt-text-inverse: #ffffff;
+
+  --yt-border-color: rgba(0, 0, 0, 0.1);
+  --yt-border-subtle: #e0e0e0;
+  --yt-search-bg: #ffffff;
+  --yt-search-border: #cccccc;
+  --yt-search-btn-bg: #f8f8f8;
+  --yt-player-bg: #000000;
+  --yt-badge-bg: rgba(0, 0, 0, 0.8);
+  --yt-badge-text: #ffffff;
+  --yt-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
