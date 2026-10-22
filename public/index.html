@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pure Tuber Web - Ad-Free Video & Background Play</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <div class="logo">
+        <span class="logo-icon">▶</span>
+        <span class="logo-text">Pure Tuber <span class="badge">Web VIP</span></span>
+      </div>
+    </div>
+    <div class="nav-center">
+      <form id="search-form" class="search-box">
+        <input type="text" id="search-input" placeholder="Dán link YouTube hoặc tìm kiếm video..." autocomplete="off" />
+        <button type="submit" id="search-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+    <div class="nav-right">
+      <div class="feature-badges">
+        <span class="pill-badge green">✓ Chặn 100% Ads</span>
+        <span class="pill-badge blue">✓ Lồng tiếng Tiếng Việt</span>
+        <span class="pill-badge orange">✓ Phát nền (Lock screen)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="container">
+    <!-- Active Player Section -->
+    <section id="player-section" class="player-section hidden">
+      <div class="player-wrapper">
+        <video id="video-element" controls playsinline></video>
+        <div id="loading-overlay" class="loading-overlay hidden">
+          <div class="spinner"></div>
+          <p>Đang kết nối luồng phát YouTube...</p>
+        </div>
+      </div>
+
+      <div class="video-meta">
+        <div class="meta-main">
+          <h1 id="video-title">Tiêu đề video</h1>
+          <div class="channel-row">
+            <div class="channel-info">
+              <span class="channel-avatar">🎬</span>
+              <div>
+                <span id="video-author" class="author-name">Tên Kênh</span>
+                <span class="sub-label">Trực tiếp từ YouTube CDN</span>
+              </div>
+            </div>
+            
+            <div class="player-actions">
+              <button id="pip-btn" class="action-btn" title="Cửa sổ nổi">
+                📺 Picture-in-Picture
+              </button>
+              <div class="audio-selector-wrapper">
+                <label for="audio-select">Âm thanh:</label>
+                <select id="audio-select" class="track-select">
+                  <option value="default">Gốc (Default)</option>
+                </select>
+              </div>
+              <div class="quality-display">
+                <span id="quality-pill" class="pill-badge purple">Auto</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="vietnamese-dub-alert" class="alert-box green-alert hidden">
+          🇻🇳 <strong>Phát hiện Thuyết minh Tiếng Việt:</strong> Video này hỗ trợ lồng tiếng Tiếng Việt tự động.
+        </div>
+
+        <div class="video-description-box">
+          <p id="video-desc">Mô tả video...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Suggestions / Demo Bar -->
+    <section class="demo-bar">
+      <span>Gợi ý thử nghiệm nhanh (Lồng tiếng Việt):</span>
+      <button class="chip" data-id="0e3GPea1Tyg">Squid Game (MrBeast - Lồng tiếng Việt)</button>
+      <button class="chip" data-id="RE3_PGwDwhw">Giảm 150 Lbs (MrBeast - Lồng tiếng Việt)</button>
+      <button class="chip" data-id="plN7JMbadRg">Ăn Hết Siêu Thị (MrBeast - Lồng tiếng Việt)</button>
+      <button class="chip" data-id="SlQR9iu09bQ">Sơn Tùng M-TP (Nhạc Gốc Việt)</button>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section">
+      <h2 id="section-heading">Khám phá Video</h2>
+      <div id="video-grid" class="video-grid">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
