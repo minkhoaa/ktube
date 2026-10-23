@@ -23,6 +23,8 @@ export const channelCache = new MemoryCache<any>({ maxItems: 100, defaultTtlMs: 
 export const shortsCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 30 * 60 * 1000 });
 export const continuationCache = new MemoryCache<any>({ maxItems: 200, defaultTtlMs: 15 * 60 * 1000 });
 export const exploreCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 15 * 60 * 1000 });
+export const searchCache = new MemoryCache<any>({ maxItems: 100, defaultTtlMs: 10 * 60 * 1000 });
+export const channelSearchCache = new MemoryCache<any>({ maxItems: 100, defaultTtlMs: 10 * 60 * 1000 });
 
 app.use(cors());
 app.use(express.json());
@@ -100,34 +102,69 @@ function getBasicInfoShared(videoId: string): Promise<any> {
   return promise;
 }
 
-// 1. Search endpoint (uses Web client, supports filters)
+// 1. Search endpoint (uses Web client, supports advanced filters, features, and content types)
 app.get('/api/search', async (req, res) => {
   try {
-    const q = req.query.q as string;
-    if (!q) {
+    const rawQuery = ((req.query.q as string) || '').trim();
+    if (!rawQuery) {
       return res.status(400).json({ error: 'Missing query parameter q' });
     }
+
+    const type = ((req.query.type as string) || '').trim().toLowerCase();
+    const uploadDate = ((req.query.upload_date as string) || '').trim().toLowerCase();
+    const duration = ((req.query.duration as string) || '').trim().toLowerCase();
+    const sortBy = ((req.query.sort_by as string) || '').trim().toLowerCase();
+    const featuresParam = ((req.query.features as string) || '').trim().toLowerCase();
+
+    const cacheKey = `search_${rawQuery}_${type}_${uploadDate}_${duration}_${sortBy}_${featuresParam}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const yt = await getYtWeb();
     const filters: any = {};
-    if (req.query.upload_date) filters.upload_date = req.query.upload_date;
-    if (req.query.duration) filters.duration = req.query.duration;
-    if (req.query.type) filters.type = req.query.type;
-    if (req.query.sort_by) filters.sort_by = req.query.sort_by;
 
-    const results = await yt.search(q, Object.keys(filters).length ? filters : undefined);
+    let actualQuery = rawQuery;
+    if (type === 'shorts') {
+      actualQuery = `${rawQuery} #shorts`;
+      filters.type = 'video';
+      filters.duration = 'short';
+    } else if (type && type !== 'all') {
+      filters.type = type;
+    }
+
+    if (uploadDate) filters.upload_date = uploadDate;
+    if (duration && type !== 'shorts') filters.duration = duration;
+    if (sortBy) filters.sort_by = sortBy;
+
+    if (featuresParam) {
+      const featuresList = featuresParam.split(',').map((f) => f.trim()).filter(Boolean);
+      if (featuresList.length > 0) {
+        filters.features = featuresList;
+      }
+    }
+
+    const results = await yt.search(actualQuery, Object.keys(filters).length ? filters : undefined);
+
     const videos = (results.videos || [])
-      .filter((v: any) => v.id && v.title?.text)
-      .map((v: any) => ({
-        id: v.id,
-        title: v.title?.text || '',
-        author: v.author?.name || '',
-        authorAvatar: v.author?.thumbnails?.[0]?.url || '',
-        duration: v.duration?.text || '',
-        views: v.short_view_count?.text || '',
-        published: v.published?.text || '',
-        thumbnail: v.thumbnails?.[0]?.url || '',
-        description: v.description_snippet?.text || ''
-      }));
+      .filter((v: any) => (v.id || v.video_id) && v.title?.text)
+      .map((v: any) => {
+        const badges = (v.badges || []).map((b: any) => b.label || b.icon_type || '').filter(Boolean);
+        const isLive = badges.includes('LIVE') || v.duration?.seconds === 0;
+        return {
+          id: v.id || v.video_id,
+          title: v.title?.text || '',
+          author: v.author?.name || '',
+          authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+          duration: isLive ? 'TRỰC TIẾP' : (v.duration?.text || ''),
+          views: v.short_view_count?.text || '',
+          published: v.published?.text || '',
+          thumbnail: v.thumbnails?.[0]?.url || '',
+          description: v.description_snippet?.text || '',
+          badges
+        };
+      });
 
     const channels = (results.channels || []).map((ch: any) => ({
       id: ch.id,
@@ -137,14 +174,120 @@ app.get('/api/search', async (req, res) => {
       description: ch.description_snippet?.text || ''
     }));
 
-    res.json({
+    const playlists = (results.playlists || [])
+      .map((p: any) => {
+        if (p.type === 'LockupView') {
+          return {
+            id: p.content_id || '',
+            title: p.metadata?.title?.text || '',
+            author: p.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.text || '',
+            videoCount: p.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[1]?.text?.text || 'Danh sách phát',
+            thumbnail: p.content_image?.primary_thumbnail?.image?.[0]?.url || ''
+          };
+        }
+        return {
+          id: p.id || '',
+          title: p.title?.text || '',
+          author: p.author?.name || '',
+          videoCount: p.video_count?.text || (typeof p.video_count === 'string' ? p.video_count : 'Danh sách phát'),
+          thumbnail: p.thumbnails?.[0]?.url || ''
+        };
+      })
+      .filter((p: any) => p.id && p.title);
+
+    let correctedQuery: string | null = null;
+    for (const item of results.results || []) {
+      if (item.type === 'ShowingResultsFor' || item.type === 'DidYouMean') {
+        correctedQuery = (item as any).corrected_query?.text || (item as any).corrected_query?.toString() || null;
+        if (correctedQuery) break;
+      }
+    }
+    if (!correctedQuery) {
+      correctedQuery = (results as any).corrected_query?.text || (results as any).did_you_mean?.text || null;
+    }
+
+    const refinements: string[] = (results.refinements || [])
+      .map((r: any) => (typeof r === 'string' ? r : r.text || ''))
+      .filter(Boolean);
+
+    const payload = {
       results: videos,
       channels,
-      hasContinuation: results.has_continuation
-    });
+      playlists,
+      correctedQuery,
+      refinements,
+      hasContinuation: !!results.has_continuation
+    };
+
+    searchCache.set(cacheKey, payload);
+    res.json(payload);
   } catch (err: any) {
     console.error('Search error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, results: [], channels: [], playlists: [] });
+  }
+});
+
+// 1a-2. In-channel video search endpoint
+app.get('/api/channel/search', async (req, res) => {
+  try {
+    const channelId = ((req.query.channelId as string) || '').trim();
+    const q = ((req.query.q as string) || '').trim();
+
+    if (!channelId || !q) {
+      return res.status(400).json({ error: 'Missing channelId or q parameter' });
+    }
+
+    const cacheKey = `channel_search_${channelId}_${q.toLowerCase()}`;
+    const cached = channelSearchCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const yt = await getYtWeb();
+    let videos: any[] = [];
+
+    try {
+      const channel = await yt.getChannel(channelId);
+      if (channel && typeof channel.search === 'function') {
+        const searchRes = await channel.search(q);
+        videos = (searchRes?.videos || [])
+          .filter((v: any) => (v.id || v.video_id) && v.title?.text)
+          .map((v: any) => ({
+            id: v.id || v.video_id,
+            title: v.title?.text || '',
+            author: v.author?.name || '',
+            authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+            duration: v.duration?.text || '',
+            views: v.short_view_count?.text || '',
+            published: v.published?.text || '',
+            thumbnail: v.thumbnails?.[0]?.url || '',
+            description: v.description_snippet?.text || ''
+          }));
+      }
+    } catch (channelErr) {
+      console.warn(`Direct channel search failed for ${channelId}, falling back to general search:`, channelErr);
+      const fallbackRes = await yt.search(`${q} channelId:${channelId}`, { type: 'video' });
+      videos = (fallbackRes?.videos || [])
+        .filter((v: any) => (v.id || v.video_id) && v.title?.text)
+        .map((v: any) => ({
+          id: v.id || v.video_id,
+          title: v.title?.text || '',
+          author: v.author?.name || '',
+          authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+          duration: v.duration?.text || '',
+          views: v.short_view_count?.text || '',
+          published: v.published?.text || '',
+          thumbnail: v.thumbnails?.[0]?.url || '',
+          description: v.description_snippet?.text || ''
+        }));
+    }
+
+    const payload = { results: videos, channelId, query: q };
+    channelSearchCache.set(cacheKey, payload);
+    res.json(payload);
+  } catch (err: any) {
+    console.error('Channel search error:', err);
+    res.status(500).json({ error: err.message, results: [], channelId: req.query.channelId, query: req.query.q });
   }
 });
 
@@ -342,15 +485,51 @@ app.get('/api/comments', async (req, res) => {
   }
 });
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+}
+
+function parseXmlCues(xmlText: string): Array<{ start: number; end: number; text: string }> {
+  const cues: Array<{ start: number; end: number; text: string }> = [];
+  const regex = /<text\s+start="([\d\.]+)"(?:\s+dur="([\d\.]+)")?[^>]*>([\s\S]*?)<\/text>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(xmlText)) !== null) {
+    const start = parseFloat(match[1]);
+    const dur = match[2] ? parseFloat(match[2]) : 2.5;
+    const end = Math.round((start + dur) * 1000) / 1000;
+    const rawText = match[3].replace(/<[^>]+>/g, '').trim();
+    const cleanText = decodeHtmlEntities(rawText);
+    if (cleanText) {
+      cues.push({
+        start: Math.round(start * 1000) / 1000,
+        end,
+        text: cleanText
+      });
+    }
+  }
+  return cues;
+}
+
 // 1e. Closed Captions (CC) endpoint
 app.get('/api/captions', async (req, res) => {
   try {
     const videoId = cleanVideoId(req.query.v as string);
+    const requestedLang = ((req.query.lang as string) || '').trim().toLowerCase();
+
     if (!videoId) {
       return res.status(400).json({ error: 'Missing video parameter v' });
     }
 
-    const cached = captionsCache.get(videoId);
+    const cacheKey = `${videoId}:${requestedLang || 'default'}`;
+    const cached = captionsCache.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
@@ -364,16 +543,41 @@ app.get('/api/captions', async (req, res) => {
       url: t.base_url
     }));
 
+    // Find requested track or best default (Vietnamese, then English, then first available)
+    let selectedTrack: any = null;
+    if (requestedLang) {
+      selectedTrack = availableLanguages.find((l: any) => l.code === requestedLang || l.code.toLowerCase().startsWith(requestedLang));
+    }
+    if (!selectedTrack && availableLanguages.length > 0) {
+      selectedTrack = availableLanguages.find((l: any) => l.code.toLowerCase().startsWith('vi')) ||
+                      availableLanguages.find((l: any) => l.code.toLowerCase().startsWith('en')) ||
+                      availableLanguages[0];
+    }
+
+    let cues: Array<{ start: number; end: number; text: string }> = [];
+    if (selectedTrack?.url) {
+      try {
+        const trackRes = await fetch(selectedTrack.url);
+        if (trackRes.ok) {
+          const xml = await trackRes.text();
+          cues = parseXmlCues(xml);
+        }
+      } catch (trackErr) {
+        console.warn(`[Captions] Failed to fetch track XML for ${videoId}:`, trackErr);
+      }
+    }
+
     const responseData = {
       availableLanguages,
-      cues: []
+      selectedLanguage: selectedTrack?.code || null,
+      cues
     };
 
-    captionsCache.set(videoId, responseData);
+    captionsCache.set(cacheKey, responseData);
     res.json(responseData);
   } catch (err: any) {
     console.error('Captions endpoint error:', err);
-    res.status(500).json({ error: err.message, availableLanguages: [], cues: [] });
+    res.status(500).json({ error: err.message, availableLanguages: [], selectedLanguage: null, cues: [] });
   }
 });
 
