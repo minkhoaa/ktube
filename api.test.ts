@@ -66,6 +66,12 @@ describe('Backend API Extensions', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data.availableLanguages)).toBe(true);
+    expect(Array.isArray(data.cues)).toBe(true);
+    if (data.cues.length > 0) {
+      expect(typeof data.cues[0].start).toBe('number');
+      expect(typeof data.cues[0].end).toBe('number');
+      expect(typeof data.cues[0].text).toBe('string');
+    }
   }, 15000);
 
   it('GET /api/channel returns channel profile and videos', async () => {
