@@ -5,10 +5,20 @@ import './VideoGrid.css';
 interface VideoGridProps {
   videos: VideoItem[];
   loading?: boolean;
-  onSelectVideo: (videoId: string) => void;
+  onSelectVideo: (videoId: string, title?: string, author?: string, thumbnail?: string) => void;
+  onSelectChannel?: (channelName: string) => void;
+  onHideVideo?: (videoId: string) => void;
+  onHideChannel?: (channelName: string) => void;
 }
 
-export function VideoGrid({ videos, loading = false, onSelectVideo }: VideoGridProps) {
+export function VideoGrid({
+  videos,
+  loading = false,
+  onSelectVideo,
+  onSelectChannel,
+  onHideVideo,
+  onHideChannel
+}: VideoGridProps) {
   if (loading) {
     return (
       <div className="video-grid">
@@ -39,7 +49,14 @@ export function VideoGrid({ videos, loading = false, onSelectVideo }: VideoGridP
   return (
     <div className="video-grid">
       {videos.map((v) => (
-        <VideoCard key={v.id} video={v} onSelect={onSelectVideo} />
+        <VideoCard
+          key={v.id}
+          video={v}
+          onSelect={onSelectVideo}
+          onSelectChannel={onSelectChannel}
+          onHideVideo={onHideVideo}
+          onHideChannel={onHideChannel}
+        />
       ))}
     </div>
   );

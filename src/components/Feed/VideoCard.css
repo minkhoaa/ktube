@@ -4,7 +4,16 @@
   cursor: pointer;
   gap: 12px;
   user-select: none;
-  transition: transform var(--yt-transition-fast);
+  transition: transform var(--yt-transition-fast), opacity 0.25s ease;
+}
+
+.video-card.dismissed {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+  height: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 .video-card:hover {
@@ -18,6 +27,42 @@
   border-radius: var(--yt-radius-lg);
   overflow: hidden;
   background: var(--yt-bg-secondary);
+}
+
+.hover-preview-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: #000;
+}
+
+.hover-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hover-preview-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: #3ea6ff;
+  width: 0%;
+  animation: preview-timer 10s linear infinite;
+}
+
+@keyframes preview-timer {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
 }
 
 .thumbnail-img {
@@ -53,6 +98,12 @@
   overflow: hidden;
   flex-shrink: 0;
   background: var(--yt-bg-secondary);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.channel-avatar-wrapper:hover {
+  transform: scale(1.08);
 }
 
 .channel-avatar {
@@ -98,6 +149,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.video-card-channel:hover {
+  color: var(--yt-text-primary, #fff);
+  text-decoration: underline;
 }
 
 .video-card-stats {
