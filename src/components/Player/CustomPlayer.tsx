@@ -29,6 +29,7 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isIdle, setIsIdle] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoop, setIsLoop] = useState(false);
   const [isAmbientEnabled, setIsAmbientEnabled] = useState(() => {
     try {
       return localStorage.getItem('puretube_ambient_enabled') === 'true';
@@ -45,6 +46,23 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       } catch {}
       return next;
     });
+  };
+
+  const toggleLoop = () => {
+    setIsLoop((prev) => {
+      const next = !prev;
+      if (videoRef.current) {
+        videoRef.current.loop = next;
+      }
+      return next;
+    });
+  };
+
+  const seekRelative = (offset: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const dur = video.duration || 0;
+    video.currentTime = Math.max(0, Math.min(dur, video.currentTime + offset));
   };
   const [splashState, setSplashState] = useState<'play' | 'pause' | null>(null);
 
@@ -211,6 +229,12 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       const video = videoRef.current;
       if (!video) return;
 
+      if (e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        onNext?.();
+        return;
+      }
+
       switch (e.key.toLowerCase()) {
         case ' ':
         case 'k':
@@ -360,6 +384,8 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
           onSelectLanguage={setLanguage}
           isAmbientEnabled={isAmbientEnabled}
           onToggleAmbient={toggleAmbient}
+          isLoop={isLoop}
+          onToggleLoop={toggleLoop}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
@@ -384,6 +410,7 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}
           onNext={onNext}
+          onSeekRelative={seekRelative}
           volume={volume}
           isMuted={isMuted}
           onToggleMute={toggleMute}

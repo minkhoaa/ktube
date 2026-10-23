@@ -17,6 +17,8 @@ interface SettingsMenuProps {
   onSelectLanguage?: (code: string | null) => void;
   isAmbientEnabled?: boolean;
   onToggleAmbient?: () => void;
+  isLoop?: boolean;
+  onToggleLoop?: () => void;
 }
 
 type MenuPage = 'main' | 'quality' | 'speed' | 'audio' | 'captions';
@@ -37,7 +39,9 @@ export function SettingsMenu({
   selectedLanguage = null,
   onSelectLanguage,
   isAmbientEnabled = true,
-  onToggleAmbient
+  onToggleAmbient,
+  isLoop = false,
+  onToggleLoop
 }: SettingsMenuProps) {
   const [page, setPage] = useState<MenuPage>('main');
 
@@ -242,6 +246,18 @@ export function SettingsMenu({
         </div>
         <div className="settings-item-right">
           <span>{isAmbientEnabled ? 'Bật' : 'Tắt'}</span>
+        </div>
+      </div>
+
+      <div
+        className="settings-item"
+        onClick={() => onToggleLoop?.()}
+      >
+        <div className="settings-item-left">
+          <span>Vòng lặp (Loop)</span>
+        </div>
+        <div className="settings-item-right">
+          <span>{isLoop ? 'Bật' : 'Tắt'}</span>
         </div>
       </div>
     </div>
