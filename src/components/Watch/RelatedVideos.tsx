@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { VideoItem } from '../../types';
 import { fetchFeed } from '../../services/api';
+import { setNextVideo } from '../../services/store';
 import './RelatedVideos.css';
 
 interface RelatedVideosProps {
@@ -27,8 +28,21 @@ export function RelatedVideos({ currentVideoId, onSelectVideo, onNextReady }: Re
       .then((items) => {
         const filtered = items.filter((v) => v.id !== currentVideoId);
         setVideos(filtered);
-        if (filtered.length > 0 && onNextReady) {
-          onNextReady(filtered[0].id);
+        if (filtered.length > 0) {
+          const first = filtered[0];
+          if (isAutoplay) {
+            setNextVideo({
+              id: first.id,
+              title: first.title,
+              author: first.author,
+              thumbnail: first.thumbnail
+            });
+          }
+          if (onNextReady) {
+            onNextReady(first.id);
+          }
+        } else {
+          setNextVideo(null);
         }
       })
       .catch((err) => console.error('Related videos error:', err));
@@ -44,7 +58,20 @@ export function RelatedVideos({ currentVideoId, onSelectVideo, onNextReady }: Re
             <input
               type="checkbox"
               checked={isAutoplay}
-              onChange={(e: any) => setIsAutoplay(e.target.checked)}
+              onChange={(e: any) => {
+                const checked = e.target.checked;
+                setIsAutoplay(checked);
+                if (!checked) {
+                  setNextVideo(null);
+                } else if (videos.length > 0) {
+                  setNextVideo({
+                    id: videos[0].id,
+                    title: videos[0].title,
+                    author: videos[0].author,
+                    thumbnail: videos[0].thumbnail
+                  });
+                }
+              }}
             />
             <span className="slider-round" />
           </div>

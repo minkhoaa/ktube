@@ -1,0 +1,159 @@
+.autoplay-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.autoplay-countdown-card {
+  max-width: 420px;
+  width: 90%;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.autoplay-countdown-header {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: left;
+}
+
+.autoplay-next-preview {
+  display: flex;
+  gap: 14px;
+  cursor: pointer;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.autoplay-next-preview:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.autoplay-thumb-wrapper {
+  position: relative;
+  width: 140px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #000;
+}
+
+.autoplay-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.autoplay-circle-timer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.timer-svg {
+  transform: rotate(-90deg);
+}
+
+.timer-bg-circle {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+}
+
+.timer-progress-circle {
+  fill: none;
+  stroke: #ff0000;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.timer-play-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.autoplay-info-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.autoplay-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.autoplay-author {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.autoplay-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.autoplay-cancel-btn,
+.autoplay-play-now-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 18px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.autoplay-cancel-btn {
+  background: transparent;
+  color: #fff;
+}
+
+.autoplay-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.autoplay-play-now-btn {
+  background: #fff;
+  color: #000;
+}
+
+.autoplay-play-now-btn:hover {
+  background: #e0e0e0;
+}

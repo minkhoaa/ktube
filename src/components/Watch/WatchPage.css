@@ -25,6 +25,9 @@
 .theater-top-player {
   width: 100%;
   margin-bottom: 24px;
+  background: #000;
+  border-radius: var(--yt-radius-lg);
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { VideoInfo } from '../../types';
 import { fetchVideoInfo } from '../../services/api';
+import { getAppState, subscribeAppState } from '../../services/store';
 import { VideoMetadata } from './VideoMetadata';
 import { DescriptionBox } from './DescriptionBox';
 import { CommentsSection } from './CommentsSection';
@@ -15,9 +16,20 @@ interface WatchPageProps {
 
 export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPageProps) {
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
-  const [isTheater, setIsTheater] = useState(false);
+  const [isTheater, setIsTheater] = useState(() => getAppState().playerState.isTheater || false);
   const [nextVideoId, setNextVideoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    return subscribeAppState((state) => {
+      const newTheater = state.playerState.isTheater || false;
+      setIsTheater(newTheater);
+      // Ensure player docks correctly into new slot position
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('redock-player'));
+      }, 20);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import { getAppState, subscribeAppState, setView, closePlayer } from '../../services/store';
+import { getAppState, subscribeAppState, setView, closePlayer, toggleTheater, playVideo } from '../../services/store';
 import { CustomPlayer } from './CustomPlayer';
 import '../../styles/player.css';
 
@@ -57,7 +57,7 @@ export function PersistentPlayer() {
       if (retryTimer) clearTimeout(retryTimer);
       window.removeEventListener('redock-player', handleRedock);
     };
-  }, [view, playerState.mode, activeVideo?.id]);
+  }, [view, playerState.mode, playerState.isTheater, activeVideo?.id]);
 
   if (!activeVideo) {
     return (
@@ -68,6 +68,15 @@ export function PersistentPlayer() {
   }
 
   const isMiniplayer = playerState.mode === 'miniplayer';
+
+  const handleNext = () => {
+    const next = playerState.nextVideo;
+    if (next) {
+      playVideo(next);
+      window.history.pushState({}, '', `/?v=${encodeURIComponent(next.id)}`);
+      window.dispatchEvent(new CustomEvent('redock-player'));
+    }
+  };
 
   return (
     <div id="persistent-player-host">
@@ -103,8 +112,9 @@ export function PersistentPlayer() {
         <CustomPlayer
           videoId={activeVideo.id}
           thumbnail={activeVideo.thumbnail}
-          isTheater={false}
-          onToggleTheater={() => {}}
+          isTheater={playerState.isTheater || false}
+          onToggleTheater={toggleTheater}
+          onNext={playerState.nextVideo ? handleNext : undefined}
         />
       </div>
     </div>

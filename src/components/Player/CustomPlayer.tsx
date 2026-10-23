@@ -3,6 +3,8 @@ import { useHls } from '../../hooks/useHls';
 import { useCaptions } from '../../hooks/useCaptions';
 import { useAmbientCanvas } from '../../hooks/useAmbientCanvas';
 import { CaptionsOverlay } from './CaptionsOverlay';
+import { AutoplayOverlay } from './AutoplayOverlay';
+import { getAppState } from '../../services/store';
 import { Seekbar } from './Seekbar';
 import { Controls } from './Controls';
 import { SettingsMenu } from './SettingsMenu';
@@ -30,6 +32,7 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
   const [isIdle, setIsIdle] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoop, setIsLoop] = useState(false);
+  const [showAutoplayCountdown, setShowAutoplayCountdown] = useState(false);
   const [isAmbientEnabled, setIsAmbientEnabled] = useState(() => {
     try {
       return localStorage.getItem('puretube_ambient_enabled') === 'true';
@@ -94,6 +97,10 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
   // Sample ambient glow on canvas
   useAmbientCanvas(videoRef, canvasRef, isAmbientEnabled);
 
+  useEffect(() => {
+    setShowAutoplayCountdown(false);
+  }, [videoId]);
+
   // Sync video events
   useEffect(() => {
     const video = videoRef.current;
@@ -111,12 +118,25 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       setVolume(video.volume);
       setIsMuted(video.muted);
     };
+    const onEnded = () => {
+      setIsPlaying(false);
+      const appState = getAppState();
+      if (isLoop || video.loop) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+        return;
+      }
+      if (appState.playerState.nextVideo && onNext) {
+        setShowAutoplayCountdown(true);
+      }
+    };
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
     video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('durationchange', onDurationChange);
     video.addEventListener('volumechange', onVolumeChange);
+    video.addEventListener('ended', onEnded);
 
     return () => {
       video.removeEventListener('play', onPlay);
@@ -124,8 +144,9 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('volumechange', onVolumeChange);
+      video.removeEventListener('ended', onEnded);
     };
-  }, []);
+  }, [isLoop, onNext]);
 
   // Idle timer to auto-hide controls
   const resetIdleTimer = () => {
@@ -392,6 +413,18 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
 
       {/* Captions Text Overlay */}
       <CaptionsOverlay text={currentCueText} />
+
+      {/* Autoplay 5-second countdown overlay (Review Focus 1) */}
+      {showAutoplayCountdown && getAppState().playerState.nextVideo && onNext && (
+        <AutoplayOverlay
+          nextVideo={getAppState().playerState.nextVideo!}
+          onPlayNow={() => {
+            setShowAutoplayCountdown(false);
+            onNext();
+          }}
+          onCancel={() => setShowAutoplayCountdown(false)}
+        />
+      )}
 
       {/* Error Overlay */}
       {error && (
