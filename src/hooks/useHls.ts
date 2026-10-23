@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Hls from 'hls.js';
+import { getResumeTime } from '../services/libraryStore';
 
 export interface QualityLevel {
   id: number;
@@ -93,6 +94,25 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
 
         // Ensure audio is ALWAYS UNMUTED by default
         video.muted = false;
+
+        // Resume playback if user watched this video previously (Review Focus 2)
+        try {
+          const resumeTime = getResumeTime(videoId);
+          if (resumeTime > 5) {
+            const applyResume = () => {
+              if (video.currentTime < resumeTime) {
+                video.currentTime = resumeTime;
+              }
+            };
+            if (video.readyState >= 1) {
+              applyResume();
+            } else {
+              video.addEventListener('loadedmetadata', applyResume, { once: true });
+            }
+          }
+        } catch (e) {
+          console.warn('[Hls] Failed to resume playback:', e);
+        }
 
         // Attempt autoplay with full sound
         const playPromise = video.play();

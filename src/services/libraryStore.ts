@@ -152,16 +152,6 @@ export function clearHistory(): void {
   persistAndNotify();
 }
 
-export function getResumeTime(videoId: string): number {
-  if (!videoId) return 0;
-  const item = libraryData.history.find((h) => h.id === videoId);
-  if (!item) return 0;
-  if (item.progressPercent >= 95 || item.currentTime <= 5) {
-    return 0;
-  }
-  return item.currentTime;
-}
-
 export function toggleLikedVideo(video: HistoryEntry): boolean {
   const index = libraryData.liked.findIndex((v) => v.id === video.id);
   let isNowLiked = false;

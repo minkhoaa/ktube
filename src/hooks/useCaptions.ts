@@ -32,9 +32,6 @@ export function useCaptions(videoRef: { current: HTMLVideoElement | null }, vide
       .then((data) => {
         if (!cancelled && data.availableLanguages) {
           setAvailableLanguages(data.availableLanguages);
-          if (data.cues && data.cues.length > 0) {
-            setCues(data.cues);
-          }
         }
       })
       .catch((err) => {
@@ -46,10 +43,35 @@ export function useCaptions(videoRef: { current: HTMLVideoElement | null }, vide
     };
   }, [videoId]);
 
+  // Load cues whenever selectedLanguage changes
+  useEffect(() => {
+    let cancelled = false;
+    if (!videoId || !selectedLanguage) {
+      setCues([]);
+      setCurrentCueText('');
+      return;
+    }
+
+    fetch(`/api/captions?v=${encodeURIComponent(videoId)}&lang=${encodeURIComponent(selectedLanguage)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.cues) {
+          setCues(data.cues);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load language cues:', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId, selectedLanguage]);
+
   // Sync cue text with video current time
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !selectedLanguage) {
+    if (!video || !selectedLanguage || cues.length === 0) {
       setCurrentCueText('');
       return;
     }
@@ -71,13 +93,15 @@ export function useCaptions(videoRef: { current: HTMLVideoElement | null }, vide
       setSelectedLanguage(null);
       setCurrentCueText('');
     } else if (availableLanguages.length > 0) {
-      setSelectedLanguage(availableLanguages[0].code);
+      const vi = availableLanguages.find(l => l.code.toLowerCase().startsWith('vi'));
+      setSelectedLanguage(vi ? vi.code : availableLanguages[0].code);
     }
   };
 
   const setLanguage = (langCode: string | null) => {
     setSelectedLanguage(langCode);
     if (!langCode) {
+      setCues([]);
       setCurrentCueText('');
     }
   };
