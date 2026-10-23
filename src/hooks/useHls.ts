@@ -45,7 +45,7 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
         capLevelToPlayerSize: false, // Do not downscale based on player DOM size
         testBandwidth: false, // Do not load lowest level (240p) to test bandwidth
         abrEwmaDefaultEstimate: 5000000, // 5 Mbps initial bandwidth estimate to start at HD
-        startFragPrefetch: true, // Prefetch fragment 0 in parallel while playlists are being parsed
+        startFragPrefetch: false, // Avoid loading unneeded level fragments before levels are parsed
         maxBufferLength: 15, // Buffer 15s (fast start without network flooding)
         maxMaxBufferLength: 30,
         enableWorker: true,
@@ -118,10 +118,9 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
-            console.warn('[Hls] Browser policy requires user gesture for unmuted playback:', err);
-            // Never force muted playback - audio is ON by default.
-            // If browser blocks unmuted autoplay on a fresh reload, pause and display center play button
-            video.pause();
+            console.warn('[Hls] Browser policy requires user gesture for unmuted playback, starting muted for instant play:', err);
+            video.muted = true;
+            video.play().catch(() => {});
           });
         }
       });

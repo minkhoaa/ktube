@@ -15,6 +15,18 @@ interface VideoCardProps {
 
 const prefetchedIds = new Set<string>();
 
+let globalActivePreviewId: string | null = null;
+const previewListeners = new Set<(id: string | null) => void>();
+
+function setActivePreview(id: string | null) {
+  globalActivePreviewId = id;
+  for (const fn of previewListeners) {
+    try {
+      fn(id);
+    } catch {}
+  }
+}
+
 function prefetchVideo(id: string) {
   if (!id || prefetchedIds.has(id)) return;
   prefetchedIds.add(id);
@@ -34,6 +46,23 @@ export function VideoCard({
   const hoverTimer = useRef<any>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Sync with global active preview singleton so only 1 preview can ever exist
+  useEffect(() => {
+    const listener = (activeId: string | null) => {
+      if (activeId !== video.id) {
+        if (hoverTimer.current) {
+          clearTimeout(hoverTimer.current);
+          hoverTimer.current = null;
+        }
+        setIsPreviewing(false);
+      }
+    };
+    previewListeners.add(listener);
+    return () => {
+      previewListeners.delete(listener);
+    };
+  }, [video.id]);
 
   // Centralized batch thumbnail observer
   useEffect(() => {
@@ -87,6 +116,7 @@ export function VideoCard({
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     // 400ms debounce before starting video preview
     hoverTimer.current = setTimeout(() => {
+      setActivePreview(video.id);
       setIsPreviewing(true);
     }, 400);
   };
@@ -96,6 +126,7 @@ export function VideoCard({
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
+    setActivePreview(null);
     setIsPreviewing(false);
   };
 
@@ -105,12 +136,20 @@ export function VideoCard({
 
   const handleChannelClick = (e: MouseEvent) => {
     e.stopPropagation();
+    setActivePreview(null);
+    setIsPreviewing(false);
     if (onSelectChannel && video.author) {
       onSelectChannel(video.author);
     }
   };
 
   const handleCardClick = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setActivePreview(null);
+    setIsPreviewing(false);
     onSelect(video.id, video.title, video.author, video.thumbnail);
   };
 

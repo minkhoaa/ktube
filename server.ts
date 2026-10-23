@@ -921,28 +921,36 @@ app.get('/api/stream/segment', async (req, res) => {
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
     if (upstreamRes.body) {
+      const nodeStream = Readable.fromWeb(upstreamRes.body as any);
+      const chunks: Buffer[] = [];
+
       if (isSegment0 && !req.headers.range) {
-        // Buffer segment 0 into RAM cache for zero-latency instant replays / seeks
-        const arrayBuf = await upstreamRes.arrayBuffer();
-        const buf = Buffer.from(arrayBuf);
-        segmentCache.set(targetUrl, { buffer: buf, contentType });
-        res.setHeader('Content-Length', buf.length);
-        return res.send(buf);
-      } else {
-        const nodeStream = Readable.fromWeb(upstreamRes.body as any);
-        nodeStream.on('error', (err) => {
-          if (!res.headersSent) {
-            res.status(500).end();
-          } else {
-            res.destroy(err);
+        nodeStream.on('data', (chunk: any) => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+
+        nodeStream.on('end', () => {
+          if (chunks.length > 0) {
+            const fullBuf = Buffer.concat(chunks);
+            segmentCache.set(targetUrl, { buffer: fullBuf, contentType });
           }
         });
-        req.on('close', () => {
-          nodeStream.destroy();
-        });
-        if (req.destroyed) return;
-        nodeStream.pipe(res);
       }
+
+      nodeStream.on('error', (err) => {
+        if (!res.headersSent) {
+          res.status(500).end();
+        } else {
+          res.destroy(err);
+        }
+      });
+
+      req.on('close', () => {
+        nodeStream.destroy();
+      });
+
+      if (req.destroyed) return;
+      nodeStream.pipe(res);
     } else {
       res.end();
     }

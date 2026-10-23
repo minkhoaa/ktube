@@ -83,9 +83,10 @@ export function App() {
       thumbnail: thumbnail || ''
     });
 
-    const videoEl = document.querySelector('video');
+    const videoEl = document.querySelector('.persistent-player-wrapper video') as HTMLVideoElement;
     if (videoEl) {
       videoEl.muted = false;
+      videoEl.play().catch(() => {});
     }
 
     requestAnimationFrame(() => {

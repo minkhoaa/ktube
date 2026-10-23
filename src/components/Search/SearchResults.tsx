@@ -36,6 +36,15 @@ export function SearchResults({ query, onSelectVideo }: SearchResultsProps) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!query || !query.trim()) {
+      setVideos([]);
+      setChannels([]);
+      setPlaylists([]);
+      setCorrectedQuery(null);
+      setRefinements([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     fetchSearch(query, filters)

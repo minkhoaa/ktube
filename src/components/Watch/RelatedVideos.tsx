@@ -25,8 +25,9 @@ export function RelatedVideos({ currentVideoId, onSelectVideo, onNextReady }: Re
 
   useEffect(() => {
     fetchFeed()
-      .then((items) => {
-        const filtered = items.filter((v) => v.id !== currentVideoId);
+      .then((res: any) => {
+        const list: VideoItem[] = Array.isArray(res) ? res : (res?.results || []);
+        const filtered = list.filter((v) => v.id !== currentVideoId);
         setVideos(filtered);
         if (filtered.length > 0) {
           const first = filtered[0];
