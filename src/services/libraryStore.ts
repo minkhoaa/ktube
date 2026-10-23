@@ -152,6 +152,16 @@ export function clearHistory(): void {
   persistAndNotify();
 }
 
+export function getResumeTime(videoId: string): number {
+  if (!videoId) return 0;
+  const item = libraryData.history.find((h) => h.id === videoId);
+  if (!item) return 0;
+  if (item.progressPercent >= 95 || item.currentTime <= 5) {
+    return 0;
+  }
+  return item.currentTime;
+}
+
 export function toggleLikedVideo(video: HistoryEntry): boolean {
   const index = libraryData.liked.findIndex((v) => v.id === video.id);
   let isNowLiked = false;
@@ -277,6 +287,14 @@ export function clearSearchHistory(): void {
 
 export function getSearchHistory(): SearchHistoryItem[] {
   return [...libraryData.searchHistory];
+}
+
+export function getResumeTime(videoId: string): number {
+  if (!videoId) return 0;
+  const entry = libraryData.history.find((item) => item.id === videoId);
+  if (!entry) return 0;
+  if (entry.currentTime <= 5 || entry.progressPercent >= 95) return 0;
+  return entry.currentTime;
 }
 
 export function subscribeLibrary(listener: (data: LibraryData) => void): () => void {

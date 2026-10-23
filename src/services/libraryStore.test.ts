@@ -15,7 +15,8 @@ import {
   addSearchQuery,
   removeSearchQuery,
   clearSearchHistory,
-  getSearchHistory
+  getSearchHistory,
+  getResumeTime
 } from './libraryStore';
 
 beforeEach(() => {
@@ -97,6 +98,23 @@ test('manages search history with deduplication and cap at 50 items', () => {
   expect(capped.length).toBe(50);
   expect(capped[0].query).toBe('query 55'); // most recent
   expect(capped[49].query).toBe('query 6'); // oldest preserved, 1-5 dropped
+});
+
+test('getResumeTime returns saved currentTime when < 95% and > 5s', () => {
+  clearHistory();
+  expect(getResumeTime('unknown-id')).toBe(0);
+
+  // Watched 120s of 600s (20%) -> should return 120
+  recordHistoryProgress({ id: 'res-vid-1' }, 120, 600);
+  expect(getResumeTime('res-vid-1')).toBe(120);
+
+  // Watched 3s of 600s (<= 5s) -> should return 0 (too early to resume)
+  recordHistoryProgress({ id: 'res-vid-2' }, 3, 600);
+  expect(getResumeTime('res-vid-2')).toBe(0);
+
+  // Watched 580s of 600s (> 95%) -> should return 0 (resets to start)
+  recordHistoryProgress({ id: 'res-vid-3' }, 580, 600);
+  expect(getResumeTime('res-vid-3')).toBe(0);
 });
 
 

@@ -14,6 +14,9 @@ export interface PlayerState {
   isMuted: boolean;
   activeAudioTrack: string;
   availableAudioTracks: Array<{ id: string; label: string; language: string }>;
+  isTheater?: boolean;
+  isLoop?: boolean;
+  nextVideo?: ActiveVideo | null;
 }
 
 export type AppView = 'feed' | 'search' | 'watch' | 'history' | 'subscriptions' | 'channel' | 'shorts';
@@ -35,7 +38,10 @@ const defaultPlayerState: PlayerState = {
   volume: 1,
   isMuted: false,
   activeAudioTrack: '',
-  availableAudioTracks: []
+  availableAudioTracks: [],
+  isTheater: false,
+  isLoop: false,
+  nextVideo: null
 };
 
 let state: AppState = {
@@ -145,3 +151,16 @@ export function closePlayer(): void {
   };
   notify();
 }
+
+export function toggleTheater(): void {
+  updatePlayerState({ isTheater: !state.playerState.isTheater });
+}
+
+export function toggleLoop(): void {
+  updatePlayerState({ isLoop: !state.playerState.isLoop });
+}
+
+export function setNextVideo(video: ActiveVideo | null): void {
+  updatePlayerState({ nextVideo: video });
+}
+

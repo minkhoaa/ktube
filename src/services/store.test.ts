@@ -1,5 +1,16 @@
 import { test, expect } from 'bun:test';
-import { getAppState, setAppState, subscribeAppState, playVideo, closePlayer, setView, updatePlayerState } from './store';
+import {
+  getAppState,
+  setAppState,
+  subscribeAppState,
+  playVideo,
+  closePlayer,
+  setView,
+  updatePlayerState,
+  toggleTheater,
+  toggleLoop,
+  setNextVideo
+} from './store';
 
 test('store manages view, activeVideo, and notifies subscribers', () => {
   let notifiedState: any = null;
@@ -27,4 +38,24 @@ test('store manages view, activeVideo, and notifies subscribers', () => {
   expect(getAppState().playerState.mode).toBe('hidden');
 
   unsub();
+});
+
+test('store manages theater mode, loop mode, and nextVideo', () => {
+  expect(getAppState().playerState.isTheater).toBe(false);
+  toggleTheater();
+  expect(getAppState().playerState.isTheater).toBe(true);
+  toggleTheater();
+  expect(getAppState().playerState.isTheater).toBe(false);
+
+  expect(getAppState().playerState.isLoop).toBe(false);
+  toggleLoop();
+  expect(getAppState().playerState.isLoop).toBe(true);
+  toggleLoop();
+  expect(getAppState().playerState.isLoop).toBe(false);
+
+  expect(getAppState().playerState.nextVideo).toBeNull();
+  setNextVideo({ id: 'next123', title: 'Next Video', author: 'Author', thumbnail: 'thumb.jpg' });
+  expect(getAppState().playerState.nextVideo?.id).toBe('next123');
+  setNextVideo(null);
+  expect(getAppState().playerState.nextVideo).toBeNull();
 });
