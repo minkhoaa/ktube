@@ -54,9 +54,33 @@ export interface CommentItem {
   isPinned?: boolean;
 }
 
+export interface PlaylistItem {
+  id: string;
+  title: string;
+  author: string;
+  videoCount: string;
+  thumbnail: string;
+}
+
+export interface SearchHistoryItem {
+  query: string;
+  timestamp: number;
+}
+
 export interface SearchFilters {
   upload_date?: string;
   duration?: string;
   type?: string;
   sort_by?: string;
+  features?: string[] | string;
 }
+
+export interface SearchResultsResponse {
+  videos: VideoItem[];
+  channels: ChannelItem[];
+  playlists: PlaylistItem[];
+  correctedQuery?: string | null;
+  refinements?: string[];
+  hasContinuation?: boolean;
+}
+

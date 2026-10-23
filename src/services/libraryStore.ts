@@ -1,3 +1,5 @@
+import type { SearchHistoryItem } from '../types';
+
 export interface HistoryEntry {
   id: string;
   title: string;
@@ -28,6 +30,7 @@ export interface LibraryData {
   watchLater: HistoryEntry[];
   subscriptions: SubscriptionEntry[];
   blacklist: BlacklistData;
+  searchHistory: SearchHistoryItem[];
 }
 
 const STORAGE_KEY = 'puretube_library_v1';
@@ -38,7 +41,8 @@ function loadInitialData(): LibraryData {
     liked: [],
     watchLater: [],
     subscriptions: [],
-    blacklist: { videos: [], channels: [] }
+    blacklist: { videos: [], channels: [] },
+    searchHistory: []
   };
 
   if (typeof window === 'undefined' || !window.localStorage) {
@@ -59,7 +63,8 @@ function loadInitialData(): LibraryData {
             videos: Array.isArray(parsed.blacklist.videos) ? parsed.blacklist.videos : [],
             channels: Array.isArray(parsed.blacklist.channels) ? parsed.blacklist.channels : []
           }
-        : { videos: [], channels: [] }
+        : { videos: [], channels: [] },
+      searchHistory: Array.isArray(parsed.searchHistory) ? parsed.searchHistory : []
     };
   } catch (err) {
     console.error('Failed to parse local library data, falling back to default:', err);
@@ -87,7 +92,8 @@ function persistAndNotify() {
     blacklist: {
       videos: [...libraryData.blacklist.videos],
       channels: [...libraryData.blacklist.channels]
-    }
+    },
+    searchHistory: [...libraryData.searchHistory]
   };
 
   for (const listener of listeners) {
@@ -227,6 +233,50 @@ export function isBlacklisted(videoId: string, channelName?: string): boolean {
     }
   }
   return false;
+}
+
+export function addSearchQuery(query: string): void {
+  const q = (query || '').trim();
+  if (!q) return;
+
+  const existingIdx = libraryData.searchHistory.findIndex(
+    (item) => item.query.toLowerCase() === q.toLowerCase()
+  );
+
+  if (existingIdx >= 0) {
+    libraryData.searchHistory.splice(existingIdx, 1);
+  }
+
+  libraryData.searchHistory.unshift({
+    query: q,
+    timestamp: Date.now()
+  });
+
+  if (libraryData.searchHistory.length > 50) {
+    libraryData.searchHistory.pop();
+  }
+
+  persistAndNotify();
+}
+
+export function removeSearchQuery(query: string): void {
+  const q = (query || '').trim().toLowerCase();
+  const idx = libraryData.searchHistory.findIndex(
+    (item) => item.query.toLowerCase() === q
+  );
+  if (idx >= 0) {
+    libraryData.searchHistory.splice(idx, 1);
+    persistAndNotify();
+  }
+}
+
+export function clearSearchHistory(): void {
+  libraryData.searchHistory = [];
+  persistAndNotify();
+}
+
+export function getSearchHistory(): SearchHistoryItem[] {
+  return [...libraryData.searchHistory];
 }
 
 export function subscribeLibrary(listener: (data: LibraryData) => void): () => void {

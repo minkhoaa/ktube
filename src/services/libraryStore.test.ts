@@ -11,7 +11,11 @@ import {
   removeNotInterestedVideo,
   blockChannel,
   unblockChannel,
-  isBlacklisted
+  isBlacklisted,
+  addSearchQuery,
+  removeSearchQuery,
+  clearSearchHistory,
+  getSearchHistory
 } from './libraryStore';
 
 beforeEach(() => {
@@ -64,3 +68,35 @@ test('manages blacklist with not-interested videos and blocked channels', () => 
   unblockChannel('Toxic Channel');
   expect(isBlacklisted('any_video_id', 'Toxic Channel')).toBe(false);
 });
+
+test('manages search history with deduplication and cap at 50 items', () => {
+  clearSearchHistory();
+  expect(getSearchHistory()).toEqual([]);
+
+  addSearchQuery('lofi chill');
+  addSearchQuery('son tung mtp');
+  addSearchQuery('lofi chill'); // duplicate should move to top
+
+  const history = getSearchHistory();
+  expect(history.length).toBe(2);
+  expect(history[0].query).toBe('lofi chill');
+  expect(history[1].query).toBe('son tung mtp');
+
+  removeSearchQuery('lofi chill');
+  expect(getSearchHistory().length).toBe(1);
+  expect(getSearchHistory()[0].query).toBe('son tung mtp');
+
+  clearSearchHistory();
+  expect(getSearchHistory()).toEqual([]);
+
+  // Test cap at 50 items (Review Focus 3)
+  for (let i = 1; i <= 55; i++) {
+    addSearchQuery(`query ${i}`);
+  }
+  const capped = getSearchHistory();
+  expect(capped.length).toBe(50);
+  expect(capped[0].query).toBe('query 55'); // most recent
+  expect(capped[49].query).toBe('query 6'); // oldest preserved, 1-5 dropped
+});
+
+
