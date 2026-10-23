@@ -9,7 +9,8 @@ import { SubscriptionsPage } from './components/Library/SubscriptionsPage';
 import { ChannelPage } from './components/Channel/ChannelPage';
 import { ShortsPage } from './components/Shorts/ShortsPage';
 import { PersistentPlayer } from './components/Player/PersistentPlayer';
-import { getAppState, subscribeAppState, setView, playVideo, setAppState } from './services/store';
+import { TopProgressBar } from './components/Common/TopProgressBar';
+import { getAppState, subscribeAppState, setView, playVideo, setAppState, startPageLoading } from './services/store';
 import { recordHistoryProgress } from './services/libraryStore';
 import './styles/base.css';
 
@@ -71,6 +72,7 @@ export function App() {
   }, []);
 
   const navigateWatch = (id: string, title?: string, author?: string, thumbnail?: string) => {
+    startPageLoading();
     // Record current scroll position before leaving
     if (appState.view === 'feed') feedScrollRef.current = window.scrollY;
     if (appState.view === 'search') searchScrollRef.current = window.scrollY;
@@ -169,6 +171,7 @@ export function App() {
 
   return (
     <div className="app-container">
+      <TopProgressBar />
       <Navbar
         theme={theme}
         onToggleTheme={toggleTheme}

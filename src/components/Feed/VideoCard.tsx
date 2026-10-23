@@ -3,6 +3,7 @@ import Hls from 'hls.js';
 import type { VideoItem } from '../../types';
 import { thumbnailObserver } from '../../services/imageObserver';
 import { CardActionMenu } from './CardActionMenu';
+import { startPageLoading } from '../../services/store';
 import './VideoCard.css';
 
 interface VideoCardProps {
@@ -144,6 +145,7 @@ export function VideoCard({
   };
 
   const handleCardClick = () => {
+    startPageLoading();
     if (hoverTimer.current) {
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
