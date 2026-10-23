@@ -1,4 +1,4 @@
-import type { VideoItem, ChannelItem, VideoInfo, CommentItem, SearchFilters } from '../types';
+import type { VideoItem, ChannelItem, PlaylistItem, VideoInfo, CommentItem, SearchFilters } from '../types';
 
 export interface FeedResponse {
   results: VideoItem[];
@@ -44,12 +44,23 @@ export async function fetchSuggestions(query: string): Promise<string[]> {
 export async function fetchSearch(
   query: string,
   filters?: SearchFilters
-): Promise<{ videos: VideoItem[]; channels: ChannelItem[]; hasContinuation?: boolean }> {
+): Promise<{
+  videos: VideoItem[];
+  channels: ChannelItem[];
+  playlists: PlaylistItem[];
+  correctedQuery?: string | null;
+  refinements?: string[];
+  hasContinuation?: boolean;
+}> {
   const params = new URLSearchParams({ q: query.trim() });
   if (filters?.upload_date) params.append('upload_date', filters.upload_date);
   if (filters?.duration) params.append('duration', filters.duration);
   if (filters?.type) params.append('type', filters.type);
   if (filters?.sort_by) params.append('sort_by', filters.sort_by);
+  if (filters?.features) {
+    const fStr = Array.isArray(filters.features) ? filters.features.join(',') : filters.features;
+    params.append('features', fStr);
+  }
 
   const res = await fetch(`/api/search?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to search');
@@ -57,6 +68,9 @@ export async function fetchSearch(
   return {
     videos: data.results || [],
     channels: data.channels || [],
+    playlists: data.playlists || [],
+    correctedQuery: data.correctedQuery || null,
+    refinements: data.refinements || [],
     hasContinuation: data.hasContinuation || false
   };
 }

@@ -95,6 +95,135 @@
   font-size: 14px;
 }
 
+/* Typo Correction Banner */
+.typo-banner {
+  background: var(--yt-bg-secondary, rgba(255, 255, 255, 0.05));
+  border-left: 4px solid var(--yt-blue, #3ea6ff);
+  padding: 12px 16px;
+  border-radius: var(--yt-radius-sm, 4px);
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--yt-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.typo-link {
+  background: transparent;
+  border: none;
+  color: var(--yt-blue, #3ea6ff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: opacity var(--yt-transition-fast);
+}
+
+.typo-link:hover {
+  opacity: 0.8;
+}
+
+/* Related queries & synonym shelf */
+.related-queries-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--yt-border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.related-queries-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--yt-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.related-chips-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.related-chip {
+  background: var(--yt-bg-secondary, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--yt-border-subtle, rgba(255, 255, 255, 0.1));
+  color: var(--yt-text-primary);
+  padding: 6px 12px;
+  border-radius: var(--yt-radius-full, 16px);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--yt-transition-fast);
+}
+
+.related-chip:hover {
+  background: var(--yt-bg-hover, rgba(255, 255, 255, 0.16));
+}
+
+/* Duration badges */
+.duration-badge.live-badge {
+  background: var(--yt-red, #cc0000);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.shorts-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(255, 0, 0, 0.85);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Video feature badges */
+.search-video-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.search-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--yt-bg-hover, rgba(255, 255, 255, 0.1));
+  color: var(--yt-text-secondary);
+  text-transform: uppercase;
+}
+
+.search-badge.live {
+  background: rgba(204, 0, 0, 0.2);
+  color: #ff4e45;
+}
+
+.search-badge.hd, .search-badge.uhd {
+  background: rgba(62, 166, 255, 0.15);
+  color: #3ea6ff;
+}
+
+.search-playlists-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
 @media (max-width: 768px) {
   .search-video-item {
     flex-direction: column;
@@ -108,3 +237,4 @@
     font-size: 15px;
   }
 }
+
