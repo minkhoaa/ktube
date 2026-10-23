@@ -83,6 +83,11 @@ export function App() {
       thumbnail: thumbnail || ''
     });
 
+    const videoEl = document.querySelector('video');
+    if (videoEl) {
+      videoEl.muted = false;
+    }
+
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'instant' });
     });

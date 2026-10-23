@@ -34,25 +34,11 @@ export function VideoCard({ video, onSelect }: VideoCardProps) {
   }, [video.thumbnail]);
 
   const handleMouseEnter = () => {
-    clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => {
-      prefetchVideo(video.id);
-    }, 150);
-  };
-
-  const handleMouseLeave = () => {
-    clearTimeout(hoverTimer.current);
+    prefetchVideo(video.id);
   };
 
   const handleTouchStart = () => {
-    clearTimeout(touchTimer.current);
-    touchTimer.current = setTimeout(() => {
-      prefetchVideo(video.id);
-    }, 100);
-  };
-
-  const handleTouchMove = () => {
-    clearTimeout(touchTimer.current);
+    prefetchVideo(video.id);
   };
 
   return (
@@ -60,9 +46,8 @@ export function VideoCard({ video, onSelect }: VideoCardProps) {
       className="video-card"
       onClick={() => onSelect(video.id, video.title, video.author, video.thumbnail)}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
+      onPointerDown={handleMouseEnter}
     >
       <div className="thumbnail-container">
         <img

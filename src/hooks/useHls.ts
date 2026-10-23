@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
-import Hls from 'hls.js/dist/hls.light.mjs';
+import Hls from 'hls.js';
 
 export interface QualityLevel {
   id: number;
@@ -41,10 +41,14 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        startLevel: 0, // Fast start at lightweight chunk
-        capLevelToPlayerSize: true,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60
+        capLevelToPlayerSize: false, // Do not downscale based on player DOM size
+        testBandwidth: false, // Do not load lowest level (240p) to test bandwidth
+        abrEwmaDefaultEstimate: 5000000, // 5 Mbps initial bandwidth estimate to start at HD
+        startFragPrefetch: true, // Prefetch fragment 0 in parallel while playlists are being parsed
+        maxBufferLength: 15, // Buffer 15s (fast start without network flooding)
+        maxMaxBufferLength: 30,
+        enableWorker: true,
+        lowLatencyMode: true
       });
       hlsRef.current = hls;
 
@@ -63,8 +67,43 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
         parsedLevels.sort((a, b) => b.height - a.height);
         setLevels(parsedLevels);
 
-        // Attempt autoplay
-        video.play().catch(() => {});
+        // Quality selection: respect user preference or start directly at crisp HD (1080p / 720p)
+        try {
+          const pref = localStorage.getItem('puretube_preferred_quality');
+          if (pref && pref !== 'auto') {
+            const targetHeight = parseInt(pref, 10);
+            const foundIdx = data.levels.findIndex(l => l.height === targetHeight);
+            if (foundIdx !== -1) {
+              hls.currentLevel = foundIdx;
+              setCurrentLevel(foundIdx);
+            }
+          } else {
+            // Auto mode: start initial chunk at 720p (or 1080p) for instantaneous <200ms first-frame decode
+            const idx720 = data.levels.findIndex(l => l.height === 720);
+            const idx1080 = data.levels.findIndex(l => l.height === 1080);
+            const initialFastHd = idx720 !== -1 ? idx720 : (idx1080 !== -1 ? idx1080 : -1);
+            if (initialFastHd !== -1) {
+              hls.nextLoadLevel = initialFastHd;
+            }
+            setCurrentLevel(-1);
+          }
+        } catch {
+          setCurrentLevel(-1);
+        }
+
+        // Ensure audio is ALWAYS UNMUTED by default
+        video.muted = false;
+
+        // Attempt autoplay with full sound
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('[Hls] Browser policy requires user gesture for unmuted playback:', err);
+            // Never force muted playback - audio is ON by default.
+            // If browser blocks unmuted autoplay on a fresh reload, pause and display center play button
+            video.pause();
+          });
+        }
       });
 
       hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => {
@@ -82,7 +121,7 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
 
         setAudioTracks(tracks);
 
-        // Auto select Vietnamese audio track if available
+        // Auto select Vietnamese audio track if available, or force track 0
         const viIdx = tracks.findIndex(t => t.isVietnamese);
         if (viIdx !== -1) {
           setHasVietnameseDub(true);
@@ -90,7 +129,9 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
           setCurrentAudioTrack(viIdx);
         } else {
           setHasVietnameseDub(false);
-          setCurrentAudioTrack(hls.audioTrack);
+          const defaultTrack = hls.audioTrack >= 0 ? hls.audioTrack : 0;
+          hls.audioTrack = defaultTrack;
+          setCurrentAudioTrack(defaultTrack);
         }
       });
 
@@ -150,9 +191,18 @@ export function useHls(videoRef: { current: HTMLVideoElement | null }, videoId: 
     if (levelId === -1) {
       hlsRef.current.currentLevel = -1; // Auto
       setCurrentLevel(-1);
+      try {
+        localStorage.setItem('puretube_preferred_quality', 'auto');
+      } catch {}
     } else {
       hlsRef.current.currentLevel = levelId;
       setCurrentLevel(levelId);
+      try {
+        const selected = levels.find(l => l.id === levelId);
+        if (selected && selected.height) {
+          localStorage.setItem('puretube_preferred_quality', `${selected.height}p`);
+        }
+      } catch {}
     }
   };
 

@@ -25,20 +25,39 @@ export function PersistentPlayer() {
       return;
     }
 
-    if (view === 'watch' && playerState.mode === 'docked') {
-      const dockSlot = document.getElementById('player-dock-slot');
-      if (dockSlot && wrapper.parentElement !== dockSlot) {
-        dockSlot.appendChild(wrapper);
+    let retryTimer: any = null;
+
+    const performDocking = () => {
+      if (view === 'watch' && playerState.mode === 'docked') {
+        const dockSlot = document.getElementById('player-dock-slot');
+        if (dockSlot) {
+          if (wrapper.parentElement !== dockSlot) {
+            dockSlot.appendChild(wrapper);
+          }
+          wrapper.className = 'persistent-player-wrapper mode-docked';
+        } else {
+          // Retry until player-dock-slot is attached to the DOM
+          retryTimer = setTimeout(performDocking, 30);
+        }
+      } else if (playerState.mode === 'miniplayer') {
+        const host = document.getElementById('persistent-player-host') || document.body;
+        if (wrapper.parentElement !== host) {
+          host.appendChild(wrapper);
+        }
+        wrapper.className = 'persistent-player-wrapper mode-miniplayer';
       }
-      wrapper.className = 'persistent-player-wrapper mode-docked';
-    } else if (playerState.mode === 'miniplayer') {
-      const host = document.getElementById('persistent-player-host') || document.body;
-      if (wrapper.parentElement !== host) {
-        host.appendChild(wrapper);
-      }
-      wrapper.className = 'persistent-player-wrapper mode-miniplayer';
-    }
-  }, [view, playerState.mode, activeVideo]);
+    };
+
+    performDocking();
+
+    const handleRedock = () => performDocking();
+    window.addEventListener('redock-player', handleRedock);
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      window.removeEventListener('redock-player', handleRedock);
+    };
+  }, [view, playerState.mode, activeVideo?.id]);
 
   if (!activeVideo) {
     return (
@@ -83,6 +102,7 @@ export function PersistentPlayer() {
 
         <CustomPlayer
           videoId={activeVideo.id}
+          thumbnail={activeVideo.thumbnail}
           isTheater={false}
           onToggleTheater={() => {}}
         />

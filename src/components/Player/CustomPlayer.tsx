@@ -11,12 +11,13 @@ import '../../styles/ambient.css';
 
 interface CustomPlayerProps {
   videoId: string;
+  thumbnail?: string;
   isTheater: boolean;
   onToggleTheater: () => void;
   onNext?: () => void;
 }
 
-export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: CustomPlayerProps) {
+export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, onNext }: CustomPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -28,7 +29,23 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isIdle, setIsIdle] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAmbientEnabled, setIsAmbientEnabled] = useState(true);
+  const [isAmbientEnabled, setIsAmbientEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('puretube_ambient_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleAmbient = () => {
+    setIsAmbientEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('puretube_ambient_enabled', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [splashState, setSplashState] = useState<'play' | 'pause' | null>(null);
 
   const idleTimerRef = useRef<any>(null);
@@ -43,6 +60,7 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
     setAudioTrack,
     hasVietnameseDub,
     error,
+    isLoading,
     retry
   } = useHls(videoRef, videoId);
 
@@ -62,6 +80,10 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Audio is ALWAYS unmuted by default
+    video.muted = false;
+    if (video.volume === 0) video.volume = 1;
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -98,9 +120,34 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
     }
   };
 
+  // Automatically unmute on first document interaction if video was auto-muted by browser policy
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      const video = videoRef.current;
+      if (video && video.muted) {
+        video.muted = false;
+        setIsMuted(false);
+      }
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Unmute immediately on any direct player interaction
+    if (video.muted) {
+      video.muted = false;
+      setIsMuted(false);
+    }
+
     if (video.paused) {
       video.play().catch(() => {});
       setSplashState('play');
@@ -221,36 +268,66 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
     <div
       ref={playerWrapperRef}
       className={`custom-player-wrapper ${isTheater ? 'theater-mode' : ''}`}
+      onMouseEnter={resetIdleTimer}
       onMouseMove={resetIdleTimer}
       onMouseLeave={() => isPlaying && !isSettingsOpen && setIsIdle(true)}
     >
-      {/* Ambient Lighting Canvas Backdrop */}
-      <div className="player-ambient-canvas-wrapper">
-        <canvas
-          ref={canvasRef}
-          className={`player-ambient-canvas ${!isAmbientEnabled ? 'ambient-hidden' : ''}`}
-          width={64}
-          height={36}
-        />
-      </div>
+      {/* Ambient Lighting Canvas Backdrop (only mounted when user enables) */}
+      {isAmbientEnabled && (
+        <div className="player-ambient-canvas-wrapper">
+          <canvas
+            ref={canvasRef}
+            className="player-ambient-canvas"
+            width={64}
+            height={36}
+          />
+        </div>
+      )}
 
       <video
         ref={videoRef}
         className="player-video-element"
+        poster={thumbnail}
         playsInline
       />
 
-      {/* Top Dub Badge */}
+      {/* Top Dub & Unmute Badge */}
       <div className="player-top-badge-row">
         {hasVietnameseDub && (
           <div className="vietnamese-audio-pill">
             <span>🇻🇳 Đang phát Thuyết minh Tiếng Việt</span>
           </div>
         )}
+        {isMuted && (
+          <button
+            className="unmute-audio-pill"
+            onClick={(e) => {
+              e.stopPropagation();
+              const video = videoRef.current;
+              if (video) {
+                video.muted = false;
+                setIsMuted(false);
+              }
+            }}
+            title="Nhấp để bật tiếng"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+            </svg>
+            <span>Nhấp để bật tiếng</span>
+          </button>
+        )}
       </div>
 
       {/* Center Clickable Area */}
       <div className="player-center-click-area" onClick={togglePlay}>
+        {!isPlaying && !isLoading && (
+          <div className="center-play-button" title="Phát video">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        )}
         {splashState === 'play' && (
           <div className="play-pause-splash-icon">
             <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
@@ -282,7 +359,7 @@ export function CustomPlayer({ videoId, isTheater, onToggleTheater, onNext }: Cu
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setLanguage}
           isAmbientEnabled={isAmbientEnabled}
-          onToggleAmbient={() => setIsAmbientEnabled(prev => !prev)}
+          onToggleAmbient={toggleAmbient}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

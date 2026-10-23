@@ -23,12 +23,16 @@ export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPage
     let cancelled = false;
     setLoading(true);
 
+    // Notify PersistentPlayer that WatchPage is mounted and player-dock-slot is ready
+    window.dispatchEvent(new CustomEvent('redock-player'));
+
     fetchVideoInfo(videoId)
       .then((info) => {
         if (!cancelled) {
           setVideoInfo(info);
           setLoading(false);
           document.title = `${info.title} - Pure Tuber`;
+          window.dispatchEvent(new CustomEvent('redock-player'));
         }
       })
       .catch((err) => {
@@ -41,21 +45,13 @@ export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPage
     return () => {
       cancelled = true;
     };
-  }, [videoId]);
+  }, [videoId, isTheater]);
 
   const handleNext = () => {
     if (nextVideoId) {
       onSelectVideo(nextVideoId);
     }
   };
-
-  if (loading && !videoInfo) {
-    return (
-      <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--yt-text-secondary)' }}>
-        <p>Đang chuẩn bị luồng phát YouTube VIP...</p>
-      </div>
-    );
-  }
 
   const dockSlot = <div id="player-dock-slot" className="player-dock-slot" />;
 
@@ -73,8 +69,17 @@ export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPage
         <div className="watch-primary-col">
           {!isTheater && dockSlot}
 
-          {videoInfo && <VideoMetadata info={videoInfo} onSelectChannel={onSelectChannel} />}
-          {videoInfo && <DescriptionBox description={videoInfo.description} />}
+          {videoInfo ? (
+            <>
+              <VideoMetadata info={videoInfo} onSelectChannel={onSelectChannel} />
+              <DescriptionBox description={videoInfo.description} />
+            </>
+          ) : (
+            <div className="watch-metadata-skeleton" style={{ padding: '16px 0' }}>
+              <div style={{ height: '26px', width: '75%', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '6px', marginBottom: '12px' }} />
+              <div style={{ height: '42px', width: '45%', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '21px' }} />
+            </div>
+          )}
           <CommentsSection videoId={videoId} />
         </div>
 

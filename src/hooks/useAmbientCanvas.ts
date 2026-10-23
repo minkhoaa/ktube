@@ -13,13 +13,20 @@ export function useAmbientCanvas(
     const canvas = canvasRef.current;
     if (!video || !canvas || typeof window === 'undefined') return;
 
+    if (!isEnabled) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
 
     let timerId: any = null;
 
     const sampleFrame = () => {
-      if (!isEnabledRef.current || video.paused || video.ended || video.readyState < 2) {
+      if (!isEnabledRef.current || video.paused || video.ended || video.readyState < 2 || document.hidden) {
         return;
       }
       try {
@@ -33,7 +40,7 @@ export function useAmbientCanvas(
       stopSampling();
       if (!isEnabledRef.current) return;
       sampleFrame();
-      timerId = setInterval(sampleFrame, 100); // 10 FPS throttle for CPU/battery savings
+      timerId = setInterval(sampleFrame, 800); // 800ms throttle for smooth lighting without video frame drops
     };
 
     const stopSampling = () => {

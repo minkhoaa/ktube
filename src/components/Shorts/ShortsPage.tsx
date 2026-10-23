@@ -54,13 +54,23 @@ export function ShortsPage({ onSelectChannel }: ShortsPageProps) {
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        startLevel: 0,
+        capLevelToPlayerSize: false,
+        testBandwidth: false,
+        abrEwmaDefaultEstimate: 5000000,
         maxBufferLength: 10,
         enableWorker: true
       });
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        video.muted = false;
+        video.volume = 1;
+        const idx1080 = data.levels.findIndex(l => l.height === 1080);
+        const idx720 = data.levels.findIndex(l => l.height === 720);
+        const initialHd = idx1080 !== -1 ? idx1080 : (idx720 !== -1 ? idx720 : -1);
+        if (initialHd !== -1) {
+          hls.nextLoadLevel = initialHd;
+        }
         video.play().catch(() => {});
         setIsPlaying(true);
       });

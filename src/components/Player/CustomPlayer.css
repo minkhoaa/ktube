@@ -15,6 +15,8 @@
 }
 
 .player-video-element {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -34,6 +36,7 @@
   opacity: 1;
   transition: opacity 0.25s ease;
   pointer-events: auto;
+  z-index: 20;
 }
 
 .player-ui-overlay.idle-hidden {
@@ -51,6 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 5;
 }
 
 .play-pause-splash-icon {
@@ -64,6 +68,7 @@
   justify-content: center;
   animation: splashScale 0.5s ease forwards;
   pointer-events: none;
+  z-index: 30;
 }
 
 @keyframes splashScale {
@@ -78,6 +83,7 @@
   display: flex;
   gap: 8px;
   pointer-events: none;
+  z-index: 25;
 }
 
 .vietnamese-audio-pill {
@@ -124,4 +130,48 @@
   color: #fff;
   font-weight: 600;
   cursor: pointer;
+}
+
+.center-play-button {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.center-play-button:hover {
+  transform: scale(1.12);
+  background: #f00;
+  border-color: #f00;
+}
+
+.unmute-audio-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: var(--yt-radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+  transition: background 0.2s ease, transform 0.15s ease;
+  animation: fadeIn 0.3s ease;
+}
+
+.unmute-audio-pill:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.03);
 }

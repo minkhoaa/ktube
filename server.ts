@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 3000;
 
 export const infoCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 60 * 60 * 1000 });
 export const manifestCache = new MemoryCache<string>({ maxItems: 500, defaultTtlMs: 30 * 60 * 1000 });
+export const subPlaylistCache = new MemoryCache<string>({ maxItems: 1000, defaultTtlMs: 30 * 60 * 1000 });
+export const segmentCache = new MemoryCache<{ buffer: Buffer; contentType: string }>({ maxItems: 80, defaultTtlMs: 15 * 60 * 1000 });
 export const suggestionsCache = new MemoryCache<string[]>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
 export const commentsCache = new MemoryCache<any>({ maxItems: 500, defaultTtlMs: 15 * 60 * 1000 });
 export const feedCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 10 * 60 * 1000 });
@@ -63,6 +65,7 @@ function cleanVideoId(raw: string): string {
 
 let ytWebPromise: Promise<Innertube> | null = null;
 let ytVisionPromise: Promise<Innertube> | null = null;
+const inFlightBasicInfo = new Map<string, Promise<any>>();
 
 function getYtWeb() {
   if (!ytWebPromise) {
@@ -76,6 +79,23 @@ function getYtVision() {
     ytVisionPromise = Innertube.create({ client_type: ClientType.VISIONOS });
   }
   return ytVisionPromise;
+}
+
+function getBasicInfoShared(videoId: string): Promise<any> {
+  const existing = inFlightBasicInfo.get(videoId);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    const yt = await getYtVision();
+    return await yt.getBasicInfo(videoId, ClientType.VISIONOS as any);
+  })();
+
+  inFlightBasicInfo.set(videoId, promise);
+  promise.finally(() => {
+    inFlightBasicInfo.delete(videoId);
+  });
+
+  return promise;
 }
 
 // 1. Search endpoint (uses Web client, supports filters)
@@ -368,8 +388,7 @@ app.get('/api/info', async (req, res) => {
       return res.json(cached);
     }
 
-    const yt = await getYtVision();
-    const info = await yt.getBasicInfo(cleanId, ClientType.VISIONOS as any);
+    const info = await getBasicInfoShared(cleanId);
 
     const adaptive = info.streaming_data?.adaptive_formats || [];
     const videoQualities = Array.from(new Set(
@@ -428,8 +447,7 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
       return res.send(cached);
     }
 
-    const yt = await getYtVision();
-    const info = await yt.getBasicInfo(videoId, ClientType.VISIONOS as any);
+    const info = await getBasicInfoShared(videoId);
     const hlsUrl = info.streaming_data?.hls_manifest_url;
 
     if (!hlsUrl) {
@@ -450,6 +468,8 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
 
     // Rewrite URLs to point to our sub-playlist proxy & prioritize Vietnamese audio
     const lines = manifestText.split('\n');
+    const subUrlsToWarm: string[] = [];
+
     const rewritten = lines.map(line => {
       line = line.trim();
       if (!line) return line;
@@ -468,6 +488,9 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
 
       // Handle URI="..." in #EXT-X-MEDIA or #EXT-X-I-FRAME-STREAM-INF
       if (line.includes('URI="http')) {
+        const match = line.match(/URI="(https?:\/\/[^"]+)"/);
+        if (match && !subUrlsToWarm.includes(match[1])) subUrlsToWarm.push(match[1]);
+
         return line.replace(/URI="(https?:\/\/[^"]+)"/g, (_, url) => {
           const encoded = encodeURIComponent(url);
           return `URI="/api/stream/sub?url=${encoded}"`;
@@ -476,12 +499,18 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
 
       // Handle stream playlist URLs
       if (line.startsWith('http://') || line.startsWith('https://')) {
+        if (!subUrlsToWarm.includes(line)) subUrlsToWarm.push(line);
         const encoded = encodeURIComponent(line);
         return `/api/stream/sub?url=${encoded}`;
       }
 
       return line;
     }).join('\n');
+
+    // Background pre-warming of initial sub-playlists (first 4 sub-playlists)
+    for (const url of subUrlsToWarm.slice(0, 4)) {
+      fetchAndRewriteSubPlaylist(url).catch(() => {});
+    }
 
     let manifestTtlMs = 30 * 60 * 1000;
     const expireMatch = hlsUrl.match(/\/expire\/(\d+)/) || hlsUrl.match(/[?&]expire=(\d+)/);
@@ -500,6 +529,44 @@ app.get('/api/stream/master.m3u8', async (req, res) => {
   }
 });
 
+async function fetchAndRewriteSubPlaylist(targetUrl: string): Promise<string> {
+  const cached = subPlaylistCache.get(targetUrl);
+  if (cached) return cached;
+
+  const upstreamRes = await fetch(targetUrl);
+  if (!upstreamRes.ok) {
+    throw new Error(`Failed to fetch sub-playlist: ${upstreamRes.status}`);
+  }
+
+  const playlistText = await upstreamRes.text();
+
+  // Rewrite segment URLs & map URIs
+  const lines = playlistText.split('\n');
+  const rewritten = lines.map(line => {
+    line = line.trim();
+    if (!line) return line;
+
+    // Handle map/init segment URIs
+    if (line.includes('URI="http')) {
+      return line.replace(/URI="(https?:\/\/[^"]+)"/g, (_, url) => {
+        const encoded = encodeURIComponent(url);
+        return `URI="/api/stream/segment?url=${encoded}"`;
+      });
+    }
+
+    // Handle segment URLs
+    if (line.startsWith('http://') || line.startsWith('https://')) {
+      const encoded = encodeURIComponent(line);
+      return `/api/stream/segment?url=${encoded}`;
+    }
+
+    return line;
+  }).join('\n');
+
+  subPlaylistCache.set(targetUrl, rewritten);
+  return rewritten;
+}
+
 // 4. HLS Sub-playlist endpoint
 app.get('/api/stream/sub', async (req, res) => {
   try {
@@ -512,36 +579,7 @@ app.get('/api/stream/sub', async (req, res) => {
       return res.status(403).send('Forbidden');
     }
 
-    const upstreamRes = await fetch(targetUrl);
-    if (!upstreamRes.ok) {
-      return res.status(upstreamRes.status).send('Failed to fetch sub-playlist');
-    }
-
-    const playlistText = await upstreamRes.text();
-
-    // Rewrite segment URLs & map URIs
-    const lines = playlistText.split('\n');
-    const rewritten = lines.map(line => {
-      line = line.trim();
-      if (!line) return line;
-
-      // Handle map/init segment URIs
-      if (line.includes('URI="http')) {
-        return line.replace(/URI="(https?:\/\/[^"]+)"/g, (_, url) => {
-          const encoded = encodeURIComponent(url);
-          return `URI="/api/stream/segment?url=${encoded}"`;
-        });
-      }
-
-      // Handle segment URLs
-      if (line.startsWith('http://') || line.startsWith('https://')) {
-        const encoded = encodeURIComponent(line);
-        return `/api/stream/segment?url=${encoded}`;
-      }
-
-      return line;
-    }).join('\n');
-
+    const rewritten = await fetchAndRewriteSubPlaylist(targetUrl);
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(rewritten);
@@ -563,6 +601,18 @@ app.get('/api/stream/segment', async (req, res) => {
       return res.status(403).send('Forbidden');
     }
 
+    // Check RAM cache for segment 0
+    const isSegment0 = targetUrl.includes('gosq%2F0') || targetUrl.includes('gosq/0') || targetUrl.includes('slices%3D0-');
+    if (isSegment0 && !req.headers.range) {
+      const cachedSeg = segmentCache.get(targetUrl);
+      if (cachedSeg) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', cachedSeg.contentType);
+        res.setHeader('Content-Length', cachedSeg.buffer.length);
+        return res.send(cachedSeg.buffer);
+      }
+    }
+
     const headers: Record<string, string> = {};
     if (req.headers.range) {
       headers['Range'] = req.headers.range as string;
@@ -572,7 +622,8 @@ app.get('/api/stream/segment', async (req, res) => {
 
     res.status(upstreamRes.status);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'video/MP2T');
+    const contentType = upstreamRes.headers.get('content-type') || 'video/MP2T';
+    res.setHeader('Content-Type', contentType);
 
     const contentRange = upstreamRes.headers.get('content-range');
     if (contentRange) res.setHeader('Content-Range', contentRange);
@@ -581,19 +632,28 @@ app.get('/api/stream/segment', async (req, res) => {
     if (contentLength) res.setHeader('Content-Length', contentLength);
 
     if (upstreamRes.body) {
-      const nodeStream = Readable.fromWeb(upstreamRes.body as any);
-      nodeStream.on('error', (err) => {
-        if (!res.headersSent) {
-          res.status(500).end();
-        } else {
-          res.destroy(err);
-        }
-      });
-      req.on('close', () => {
-        nodeStream.destroy();
-      });
-      if (req.destroyed) return;
-      nodeStream.pipe(res);
+      if (isSegment0 && !req.headers.range) {
+        // Buffer segment 0 into RAM cache for zero-latency instant replays / seeks
+        const arrayBuf = await upstreamRes.arrayBuffer();
+        const buf = Buffer.from(arrayBuf);
+        segmentCache.set(targetUrl, { buffer: buf, contentType });
+        res.setHeader('Content-Length', buf.length);
+        return res.send(buf);
+      } else {
+        const nodeStream = Readable.fromWeb(upstreamRes.body as any);
+        nodeStream.on('error', (err) => {
+          if (!res.headersSent) {
+            res.status(500).end();
+          } else {
+            res.destroy(err);
+          }
+        });
+        req.on('close', () => {
+          nodeStream.destroy();
+        });
+        if (req.destroyed) return;
+        nodeStream.pipe(res);
+      }
     } else {
       res.end();
     }

@@ -7,21 +7,22 @@
   height: 100%;
   overflow: visible;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }
 
 .player-ambient-canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 115%;
-  height: 115%;
+  width: 110%;
+  height: 110%;
   transform: translate(-50%, -50%);
-  filter: blur(52px) opacity(0.65);
+  filter: blur(48px) opacity(0.5);
   pointer-events: none;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.8s ease;
+  will-change: opacity;
 }
 
 .player-ambient-canvas.ambient-hidden {
-  opacity: 0 !important;
+  display: none !important;
 }
