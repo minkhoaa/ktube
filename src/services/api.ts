@@ -81,6 +81,13 @@ export async function fetchVideoInfo(videoId: string): Promise<VideoInfo> {
   return res.json();
 }
 
+export async function fetchChannelSearch(channelId: string, query: string): Promise<VideoItem[]> {
+  const res = await fetch(`/api/channel/search?channelId=${encodeURIComponent(channelId)}&q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error('Failed to search channel');
+  const data = await res.json();
+  return data.results || [];
+}
+
 export async function fetchComments(videoId: string): Promise<{
   total: string;
   comments: CommentItem[];
