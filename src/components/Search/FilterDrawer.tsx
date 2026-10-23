@@ -20,6 +20,30 @@ export function FilterDrawer({ filters, onFilterChange }: FilterDrawerProps) {
     onFilterChange(updated);
   };
 
+  const currentFeatures: string[] = Array.isArray(filters.features)
+    ? filters.features
+    : typeof filters.features === 'string'
+    ? filters.features.split(',').map((f) => f.trim()).filter(Boolean)
+    : [];
+
+  const handleFeatureToggle = (feat: string) => {
+    const list = [...currentFeatures];
+    const idx = list.indexOf(feat);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      list.push(feat);
+    }
+
+    const updated = { ...filters };
+    if (list.length === 0) {
+      delete updated.features;
+    } else {
+      updated.features = list;
+    }
+    onFilterChange(updated);
+  };
+
   const hasActiveFilters = Object.keys(filters).length > 0;
 
   return (
@@ -117,7 +141,7 @@ export function FilterDrawer({ filters, onFilterChange }: FilterDrawerProps) {
 
           {/* 3. Loại */}
           <div className="filter-column">
-            <div className="filter-column-title">Loại</div>
+            <div className="filter-column-title">Loại nội dung</div>
             <div className="filter-options-list">
               <span
                 className={`filter-option-item ${!filters.type ? 'active' : ''}`}
@@ -132,15 +156,55 @@ export function FilterDrawer({ filters, onFilterChange }: FilterDrawerProps) {
                 Video
               </span>
               <span
+                className={`filter-option-item ${filters.type === 'shorts' ? 'active' : ''}`}
+                onClick={() => handleSelect('type', 'shorts')}
+              >
+                Shorts
+              </span>
+              <span
                 className={`filter-option-item ${filters.type === 'channel' ? 'active' : ''}`}
                 onClick={() => handleSelect('type', 'channel')}
               >
                 Kênh
               </span>
+              <span
+                className={`filter-option-item ${filters.type === 'playlist' ? 'active' : ''}`}
+                onClick={() => handleSelect('type', 'playlist')}
+              >
+                Danh sách phát
+              </span>
             </div>
           </div>
 
-          {/* 4. Sắp xếp theo */}
+          {/* 4. Đặc điểm (Multi-select) */}
+          <div className="filter-column">
+            <div className="filter-column-title">Đặc điểm video</div>
+            <div className="filter-options-list">
+              <span
+                className={`filter-option-item feature-item ${currentFeatures.includes('hd') ? 'active' : ''}`}
+                onClick={() => handleFeatureToggle('hd')}
+              >
+                <span className="feature-checkbox">{currentFeatures.includes('hd') ? '✓' : ''}</span>
+                <span>Độ nét cao (HD)</span>
+              </span>
+              <span
+                className={`filter-option-item feature-item ${currentFeatures.includes('subtitles') ? 'active' : ''}`}
+                onClick={() => handleFeatureToggle('subtitles')}
+              >
+                <span className="feature-checkbox">{currentFeatures.includes('subtitles') ? '✓' : ''}</span>
+                <span>Phụ đề (CC)</span>
+              </span>
+              <span
+                className={`filter-option-item feature-item ${currentFeatures.includes('live') ? 'active' : ''}`}
+                onClick={() => handleFeatureToggle('live')}
+              >
+                <span className="feature-checkbox">{currentFeatures.includes('live') ? '✓' : ''}</span>
+                <span>Trực tiếp (Live)</span>
+              </span>
+            </div>
+          </div>
+
+          {/* 5. Sắp xếp theo */}
           <div className="filter-column">
             <div className="filter-column-title">Sắp xếp theo</div>
             <div className="filter-options-list">
@@ -161,6 +225,12 @@ export function FilterDrawer({ filters, onFilterChange }: FilterDrawerProps) {
                 onClick={() => handleSelect('sort_by', 'view_count')}
               >
                 Lượt xem
+              </span>
+              <span
+                className={`filter-option-item ${filters.sort_by === 'rating' ? 'active' : ''}`}
+                onClick={() => handleSelect('sort_by', 'rating')}
+              >
+                Xếp hạng cao
               </span>
             </div>
           </div>
