@@ -485,7 +485,7 @@ app.get('/api/comments', async (req, res) => {
   }
 });
 
-function decodeHtmlEntities(str: string): string {
+export function decodeHtmlEntities(str: string): string {
   return str
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -496,7 +496,7 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
 }
 
-function parseXmlCues(xmlText: string): Array<{ start: number; end: number; text: string }> {
+export function parseXmlCues(xmlText: string): Array<{ start: number; end: number; text: string }> {
   const cues: Array<{ start: number; end: number; text: string }> = [];
   const regex = /<text\s+start="([\d\.]+)"(?:\s+dur="([\d\.]+)")?[^>]*>([\s\S]*?)<\/text>/gi;
   let match: RegExpExecArray | null;

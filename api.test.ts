@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { app } from './server';
+import { app, decodeHtmlEntities, parseXmlCues } from './server';
 
 describe('Backend API Extensions', () => {
   let serverInstance: any = null;
@@ -73,6 +73,23 @@ describe('Backend API Extensions', () => {
       expect(typeof data.cues[0].text).toBe('string');
     }
   }, 15000);
+
+  it('parseXmlCues and decodeHtmlEntities properly parses caption XML', () => {
+    const sampleXml = `
+      <transcript>
+        <text start="1.5" dur="2.3">Hello &amp; welcome to &quot;PureTube&quot;!</text>
+        <text start="4.2" dur="3.1">Let&#39;s stream high quality</text>
+      </transcript>
+    `;
+    const cues = parseXmlCues(sampleXml);
+    expect(cues.length).toBe(2);
+    expect(cues[0].start).toBe(1.5);
+    expect(cues[0].end).toBe(3.8);
+    expect(cues[0].text).toBe('Hello & welcome to "PureTube"!');
+    expect(cues[1].start).toBe(4.2);
+    expect(cues[1].end).toBe(7.3);
+    expect(cues[1].text).toBe("Let's stream high quality");
+  });
 
   it('GET /api/channel returns channel profile and videos', async () => {
     const res = await fetch(`http://localhost:${testPort}/api/channel?id=UCuAXFkgsw1L7xaCfnd5JJOw`);
