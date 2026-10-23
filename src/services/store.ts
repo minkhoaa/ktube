@@ -164,3 +164,36 @@ export function setNextVideo(video: ActiveVideo | null): void {
   updatePlayerState({ nextVideo: video });
 }
 
+const pageLoadingListeners = new Set<(isLoading: boolean) => void>();
+let isPageLoading = false;
+
+export function isPageLoadingState(): boolean {
+  return isPageLoading;
+}
+
+export function startPageLoading(): void {
+  isPageLoading = true;
+  for (const listener of pageLoadingListeners) {
+    try {
+      listener(true);
+    } catch {}
+  }
+}
+
+export function completePageLoading(): void {
+  isPageLoading = false;
+  for (const listener of pageLoadingListeners) {
+    try {
+      listener(false);
+    } catch {}
+  }
+}
+
+export function subscribePageLoading(listener: (isLoading: boolean) => void): () => void {
+  pageLoadingListeners.add(listener);
+  return () => {
+    pageLoadingListeners.delete(listener);
+  };
+}
+
+

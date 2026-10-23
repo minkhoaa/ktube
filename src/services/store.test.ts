@@ -9,7 +9,10 @@ import {
   updatePlayerState,
   toggleTheater,
   toggleLoop,
-  setNextVideo
+  setNextVideo,
+  startPageLoading,
+  completePageLoading,
+  subscribePageLoading
 } from './store';
 
 test('store manages view, activeVideo, and notifies subscribers', () => {
@@ -58,4 +61,19 @@ test('store manages theater mode, loop mode, and nextVideo', () => {
   expect(getAppState().playerState.nextVideo?.id).toBe('next123');
   setNextVideo(null);
   expect(getAppState().playerState.nextVideo).toBeNull();
+});
+
+test('store manages page loading state notifications', () => {
+  let loadingHistory: boolean[] = [];
+  const unsub = subscribePageLoading((isLoading) => {
+    loadingHistory.push(isLoading);
+  });
+
+  startPageLoading();
+  expect(loadingHistory[loadingHistory.length - 1]).toBe(true);
+
+  completePageLoading();
+  expect(loadingHistory[loadingHistory.length - 1]).toBe(false);
+
+  unsub();
 });
