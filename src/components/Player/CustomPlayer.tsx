@@ -4,7 +4,7 @@ import { useCaptions } from '../../hooks/useCaptions';
 import { useAmbientCanvas } from '../../hooks/useAmbientCanvas';
 import { CaptionsOverlay } from './CaptionsOverlay';
 import { AutoplayOverlay } from './AutoplayOverlay';
-import { getAppState } from '../../services/store';
+import { getAppState, completePageLoading } from '../../services/store';
 import { Seekbar } from './Seekbar';
 import { Controls } from './Controls';
 import { SettingsMenu } from './SettingsMenu';
@@ -33,6 +33,8 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLoop, setIsLoop] = useState(false);
   const [showAutoplayCountdown, setShowAutoplayCountdown] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [isAmbientEnabled, setIsAmbientEnabled] = useState(() => {
     try {
       return localStorage.getItem('puretube_ambient_enabled') === 'true';
@@ -99,6 +101,8 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
 
   useEffect(() => {
     setShowAutoplayCountdown(false);
+    setShowSplash(true);
+    setIsRevealing(false);
   }, [videoId]);
 
   // Sync video events
@@ -118,6 +122,19 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       setVolume(video.volume);
       setIsMuted(video.muted);
     };
+
+    const checkReveal = () => {
+      if (video.currentTime > 0 || video.readyState >= 3) {
+        setIsRevealing(true);
+        completePageLoading();
+        setTimeout(() => setShowSplash(false), 250);
+      }
+    };
+
+    video.addEventListener('timeupdate', checkReveal);
+    video.addEventListener('playing', checkReveal);
+    video.addEventListener('loadeddata', checkReveal);
+
     const onEnded = () => {
       setIsPlaying(false);
       const appState = getAppState();
@@ -142,6 +159,9 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
       video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('timeupdate', checkReveal);
+      video.removeEventListener('playing', checkReveal);
+      video.removeEventListener('loadeddata', checkReveal);
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('volumechange', onVolumeChange);
       video.removeEventListener('ended', onEnded);
@@ -335,6 +355,45 @@ export function CustomPlayer({ videoId, thumbnail, isTheater, onToggleTheater, o
         poster={thumbnail}
         playsInline
       />
+
+      {/* Thumbnail Splash & Buffering Spinner Overlay */}
+      {showSplash && (
+        <div className={`player-thumbnail-splash ${isRevealing ? 'reveal-fade' : ''}`}>
+          {thumbnail && (
+            <img
+              src={thumbnail}
+              className="splash-backdrop-img"
+              alt=""
+            />
+          )}
+          <div className="splash-scrim" />
+          <div className="splash-spinner-container">
+            <svg className="youtube-spinner-svg" viewBox="0 0 48 48" width="48" height="48">
+              <circle
+                className="spinner-track"
+                cx="24"
+                cy="24"
+                r="20"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.2)"
+                stroke-width="4"
+              />
+              <circle
+                className="spinner-head"
+                cx="24"
+                cy="24"
+                r="20"
+                fill="none"
+                stroke="#ff0000"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-dasharray="80"
+                stroke-dashoffset="60"
+              />
+            </svg>
+          </div>
+        </div>
+      )}
 
       {/* Top Dub & Unmute Badge */}
       <div className="player-top-badge-row">
