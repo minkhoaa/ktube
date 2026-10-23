@@ -21,6 +21,8 @@ export const feedCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 10 *
 export const captionsCache = new MemoryCache<any>({ maxItems: 300, defaultTtlMs: 2 * 60 * 60 * 1000 });
 export const channelCache = new MemoryCache<any>({ maxItems: 100, defaultTtlMs: 60 * 60 * 1000 });
 export const shortsCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 30 * 60 * 1000 });
+export const continuationCache = new MemoryCache<any>({ maxItems: 200, defaultTtlMs: 15 * 60 * 1000 });
+export const exploreCache = new MemoryCache<any>({ maxItems: 50, defaultTtlMs: 15 * 60 * 1000 });
 
 app.use(cors());
 app.use(express.json());
@@ -167,19 +169,64 @@ app.get('/api/suggestions', async (req, res) => {
   }
 });
 
-// 1c. Home/Trending feed endpoint
+// 1c. Home/Trending feed endpoint with sorting and continuation support
 app.get('/api/feed', async (req, res) => {
   try {
+    const continuation = ((req.query.continuation as string) || '').trim();
+    if (continuation) {
+      const prevResult = continuationCache.get(continuation);
+      if (prevResult && typeof prevResult.getContinuation === 'function') {
+        const next = await prevResult.getContinuation();
+        let nextContinuationToken: string | null = null;
+        if (next && next.has_continuation) {
+          nextContinuationToken = 'feed_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          continuationCache.set(nextContinuationToken, next);
+        }
+        const videos = (next?.videos || [])
+          .filter((v: any) => v.id && v.title?.text)
+          .map((v: any) => ({
+            id: v.id,
+            title: v.title?.text || '',
+            author: v.author?.name || '',
+            authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+            duration: v.duration?.text || '',
+            views: v.short_view_count?.text || '',
+            published: v.published?.text || '',
+            thumbnail: v.thumbnails?.[0]?.url || ''
+          }));
+        return res.json({ results: videos, continuationToken: nextContinuationToken });
+      }
+    }
+
     const category = ((req.query.category as string) || '').trim();
-    const cacheKey = category || 'default_trending';
+    const sortBy = ((req.query.sort_by as string) || '').trim();
+    const cacheKey = `${category || 'default'}_${sortBy || 'default'}`;
     const cached = feedCache.get(cacheKey);
     if (cached) {
-      return res.json({ results: cached });
+      return res.json(cached);
     }
 
     const yt = await getYtWeb();
-    const searchQuery = category ? `${category} thịnh hành` : 'thịnh hành việt nam';
-    const results = await yt.search(searchQuery, { type: 'video' });
+    let searchQuery = 'thịnh hành việt nam';
+    if (category) {
+      searchQuery = `${category} thịnh hành`;
+    } else if (sortBy === 'upload_date') {
+      searchQuery = 'mới nhất việt nam';
+    } else if (sortBy === 'view_count') {
+      searchQuery = 'nhiều lượt xem nhất việt nam';
+    }
+
+    const searchOptions: any = { type: 'video' };
+    if (sortBy === 'upload_date') searchOptions.sort_by = 'upload_date';
+    if (sortBy === 'view_count') searchOptions.sort_by = 'view_count';
+
+    const results = await yt.search(searchQuery, searchOptions);
+    let continuationToken: string | null = null;
+    if (results && results.has_continuation) {
+      continuationToken = 'feed_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      continuationCache.set(continuationToken, results);
+    }
+
     const videos = (results.videos || [])
       .filter((v: any) => v.id && v.title?.text)
       .map((v: any) => ({
@@ -193,10 +240,48 @@ app.get('/api/feed', async (req, res) => {
         thumbnail: v.thumbnails?.[0]?.url || ''
       }));
 
-    feedCache.set(cacheKey, videos);
-    res.json({ results: videos });
+    const responsePayload = { results: videos, continuationToken };
+    feedCache.set(cacheKey, responsePayload);
+    res.json(responsePayload);
   } catch (err: any) {
     console.error('Feed error:', err);
+    res.status(500).json({ error: err.message, results: [], continuationToken: null });
+  }
+});
+
+// 1c-2. Explore curated content groups (music, gaming, news, live)
+app.get('/api/explore', async (req, res) => {
+  try {
+    const topic = ((req.query.topic as string) || 'music').toLowerCase().trim();
+    const cached = exploreCache.get(topic);
+    if (cached) {
+      return res.json({ results: cached });
+    }
+
+    const yt = await getYtWeb();
+    let query = 'âm nhạc thịnh hành';
+    if (topic === 'gaming' || topic === 'games') query = 'trò chơi điện tử gaming';
+    else if (topic === 'news') query = 'tin tức 24h';
+    else if (topic === 'live') query = 'trực tiếp livestream';
+
+    const results = await yt.search(query, { type: 'video' });
+    const videos = (results.videos || [])
+      .filter((v: any) => v.id && v.title?.text)
+      .map((v: any) => ({
+        id: v.id,
+        title: v.title?.text || '',
+        author: v.author?.name || '',
+        authorAvatar: v.author?.thumbnails?.[0]?.url || '',
+        duration: v.duration?.text || '',
+        views: v.short_view_count?.text || '',
+        published: v.published?.text || '',
+        thumbnail: v.thumbnails?.[0]?.url || ''
+      }));
+
+    exploreCache.set(topic, videos);
+    res.json({ results: videos });
+  } catch (err: any) {
+    console.error('Explore error:', err);
     res.status(500).json({ error: err.message, results: [] });
   }
 });

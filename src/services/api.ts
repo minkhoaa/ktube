@@ -1,9 +1,34 @@
 import type { VideoItem, ChannelItem, VideoInfo, CommentItem, SearchFilters } from '../types';
 
-export async function fetchFeed(category?: string): Promise<VideoItem[]> {
-  const url = category ? `/api/feed?category=${encodeURIComponent(category)}` : '/api/feed';
+export interface FeedResponse {
+  results: VideoItem[];
+  continuationToken: string | null;
+}
+
+export async function fetchFeed(
+  category?: string,
+  sortBy?: string,
+  continuation?: string
+): Promise<FeedResponse> {
+  const params = new URLSearchParams();
+  if (category) params.append('category', category);
+  if (sortBy) params.append('sort_by', sortBy);
+  if (continuation) params.append('continuation', continuation);
+
+  const query = params.toString();
+  const url = query ? `/api/feed?${query}` : '/api/feed';
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch feed');
+  const data = await res.json();
+  return {
+    results: data.results || [],
+    continuationToken: data.continuationToken || null
+  };
+}
+
+export async function fetchExplore(topic: string): Promise<VideoItem[]> {
+  const res = await fetch(`/api/explore?topic=${encodeURIComponent(topic)}`);
+  if (!res.ok) return [];
   const data = await res.json();
   return data.results || [];
 }
