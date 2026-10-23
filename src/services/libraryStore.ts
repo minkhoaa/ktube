@@ -17,11 +17,17 @@ export interface SubscriptionEntry {
   subscribedAt: number;
 }
 
+export interface BlacklistData {
+  videos: string[];
+  channels: string[];
+}
+
 export interface LibraryData {
   history: HistoryEntry[];
   liked: HistoryEntry[];
   watchLater: HistoryEntry[];
   subscriptions: SubscriptionEntry[];
+  blacklist: BlacklistData;
 }
 
 const STORAGE_KEY = 'puretube_library_v1';
@@ -31,7 +37,8 @@ function loadInitialData(): LibraryData {
     history: [],
     liked: [],
     watchLater: [],
-    subscriptions: []
+    subscriptions: [],
+    blacklist: { videos: [], channels: [] }
   };
 
   if (typeof window === 'undefined' || !window.localStorage) {
@@ -46,7 +53,13 @@ function loadInitialData(): LibraryData {
       history: Array.isArray(parsed.history) ? parsed.history : [],
       liked: Array.isArray(parsed.liked) ? parsed.liked : [],
       watchLater: Array.isArray(parsed.watchLater) ? parsed.watchLater : [],
-      subscriptions: Array.isArray(parsed.subscriptions) ? parsed.subscriptions : []
+      subscriptions: Array.isArray(parsed.subscriptions) ? parsed.subscriptions : [],
+      blacklist: parsed.blacklist && typeof parsed.blacklist === 'object'
+        ? {
+            videos: Array.isArray(parsed.blacklist.videos) ? parsed.blacklist.videos : [],
+            channels: Array.isArray(parsed.blacklist.channels) ? parsed.blacklist.channels : []
+          }
+        : { videos: [], channels: [] }
     };
   } catch (err) {
     console.error('Failed to parse local library data, falling back to default:', err);
@@ -70,7 +83,11 @@ function persistAndNotify() {
     history: [...libraryData.history],
     liked: [...libraryData.liked],
     watchLater: [...libraryData.watchLater],
-    subscriptions: [...libraryData.subscriptions]
+    subscriptions: [...libraryData.subscriptions],
+    blacklist: {
+      videos: [...libraryData.blacklist.videos],
+      channels: [...libraryData.blacklist.channels]
+    }
   };
 
   for (const listener of listeners) {
@@ -167,6 +184,49 @@ export function toggleSubscription(channel: SubscriptionEntry): boolean {
 
 export function isSubscribed(channelId: string): boolean {
   return libraryData.subscriptions.some((c) => c.channelId === channelId);
+}
+
+export function addNotInterestedVideo(videoId: string): void {
+  if (!videoId || libraryData.blacklist.videos.includes(videoId)) return;
+  libraryData.blacklist.videos.push(videoId);
+  persistAndNotify();
+}
+
+export function removeNotInterestedVideo(videoId: string): void {
+  const idx = libraryData.blacklist.videos.indexOf(videoId);
+  if (idx >= 0) {
+    libraryData.blacklist.videos.splice(idx, 1);
+    persistAndNotify();
+  }
+}
+
+export function blockChannel(channelName: string): void {
+  const cleanName = (channelName || '').trim().toLowerCase();
+  if (!cleanName || libraryData.blacklist.channels.includes(cleanName)) return;
+  libraryData.blacklist.channels.push(cleanName);
+  persistAndNotify();
+}
+
+export function unblockChannel(channelName: string): void {
+  const cleanName = (channelName || '').trim().toLowerCase();
+  const idx = libraryData.blacklist.channels.indexOf(cleanName);
+  if (idx >= 0) {
+    libraryData.blacklist.channels.splice(idx, 1);
+    persistAndNotify();
+  }
+}
+
+export function isBlacklisted(videoId: string, channelName?: string): boolean {
+  if (videoId && libraryData.blacklist.videos.includes(videoId)) {
+    return true;
+  }
+  if (channelName) {
+    const cleanName = channelName.trim().toLowerCase();
+    if (libraryData.blacklist.channels.includes(cleanName)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function subscribeLibrary(listener: (data: LibraryData) => void): () => void {

@@ -1,5 +1,18 @@
 import { test, expect, beforeEach } from 'bun:test';
-import { getLibraryData, recordHistoryProgress, toggleLikedVideo, isVideoLiked, toggleSubscription, isSubscribed, clearHistory } from './libraryStore';
+import {
+  getLibraryData,
+  recordHistoryProgress,
+  toggleLikedVideo,
+  isVideoLiked,
+  toggleSubscription,
+  isSubscribed,
+  clearHistory,
+  addNotInterestedVideo,
+  removeNotInterestedVideo,
+  blockChannel,
+  unblockChannel,
+  isBlacklisted
+} from './libraryStore';
 
 beforeEach(() => {
   clearHistory();
@@ -28,4 +41,26 @@ test('toggles liked video and subscription', () => {
   expect(isSubscribed('ch1')).toBe(true);
   toggleSubscription({ channelId: 'ch1', channelName: 'Channel 1', avatar: 'c.jpg', subscribedAt: Date.now() });
   expect(isSubscribed('ch1')).toBe(false);
+});
+
+test('manages blacklist with not-interested videos and blocked channels', () => {
+  expect(isBlacklisted('video_123', 'Sample Channel')).toBe(false);
+
+  // Add video to not interested
+  addNotInterestedVideo('video_123');
+  expect(isBlacklisted('video_123', 'Sample Channel')).toBe(true);
+  expect(isBlacklisted('video_456', 'Sample Channel')).toBe(false);
+
+  // Remove video (Undo)
+  removeNotInterestedVideo('video_123');
+  expect(isBlacklisted('video_123', 'Sample Channel')).toBe(false);
+
+  // Block channel
+  blockChannel('Toxic Channel');
+  expect(isBlacklisted('any_video_id', 'Toxic Channel')).toBe(true);
+  expect(isBlacklisted('any_video_id', 'Good Channel')).toBe(false);
+
+  // Unblock channel (Undo)
+  unblockChannel('Toxic Channel');
+  expect(isBlacklisted('any_video_id', 'Toxic Channel')).toBe(false);
 });
