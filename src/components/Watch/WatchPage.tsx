@@ -43,7 +43,7 @@ export function WatchPage({ videoId, onSelectVideo, onSelectChannel }: WatchPage
         if (!cancelled) {
           setVideoInfo(info);
           setLoading(false);
-          document.title = `${info.title} - Pure Tuber`;
+          document.title = `${info.title} - KTube`;
           window.dispatchEvent(new CustomEvent('redock-player'));
         }
       })

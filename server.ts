@@ -974,6 +974,6 @@ app.use((req, res, next) => {
 
 if (import.meta.main) {
   app.listen(PORT, () => {
-    console.log(`🚀 Pure Tuber Web Server running at http://localhost:${PORT}`);
+    console.log(`🚀 KTube Web Server running at http://localhost:${PORT}`);
   });
 }

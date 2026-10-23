@@ -1,5 +1,7 @@
 {
-  "name": "puretube_web",
+  "name": "ktube",
+  "version": "1.0.0",
+  "description": "High-performance, Ad-free YouTube Web Streaming Platform powered by Bun, Express BFF, YouTube.js, Preact, and Hls.js",
   "module": "index.ts",
   "type": "module",
   "private": true,
