@@ -196,7 +196,7 @@ export function App() {
             className="keep-alive-page feed-page-slot"
             style={{ display: appState.view === 'feed' ? 'block' : 'none' }}
           >
-            <FeedPage onSelectVideo={navigateWatch} />
+            <FeedPage onSelectVideo={navigateWatch} onSelectChannel={navigateChannel} />
           </div>
 
           <div
